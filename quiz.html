@@ -71,15 +71,22 @@
             <button class="upload-btn" onclick="document.getElementById('fileInput').click()">選擇新檔案上傳 (.json / .csv / .txt)</button>
             
             <div class="file-hint">
-                <div class="hint-title">💡 <strong>提示：</strong> 系統會自動分辨是「選擇題」還是「英文填空題」喔！</div>
+                <div class="hint-title">💡 <strong>提示：</strong> 系統會自動分辨是「選擇題」還是「填空題」喔！</div>
                 
                 <div class="hint-item">
-                    <strong>1. 英文填空格式：</strong>
+                    <strong>1. CSV 格式說明 (支援包含引號與逗號的複雜題目)：</strong>
+                    <pre><code>欄位：題目類型(A/B), 配分, 題目, 答案, 選項1, 選項2, 選項3, 選項4
+範例 A (單選)：A,1,"這是題目, 包含逗號",3,選項A,選項B,選項C,選項D
+範例 B (簡答)：B,1,"請輸入...的英文",Apple,,,,</code></pre>
+                </div>
+
+                <div class="hint-item">
+                    <strong>2. JSON 英文填空格式：</strong>
                     <pre><code>[ {"q":"中文", "ans":["答案A", "答案B"]} ]</code></pre>
                 </div>
                 
                 <div class="hint-item">
-                    <strong>2. 選擇題格式：</strong>
+                    <strong>3. JSON 選擇題格式：</strong>
                     <pre><code>[ 
   {
     "q": "題目", 
@@ -177,6 +184,7 @@
                     content = content.trim();
                     let parsedData = [];
 
+                    // 判斷是否為 JSON/Python 格式，否則走進階 CSV 解析
                     if (content.startsWith('{') || content.startsWith('[') || content.includes("'q'") || content.includes('"q"')) {
                         parsedData = cleanAndParsePythonFormat(content);
                     } else {
@@ -237,18 +245,74 @@
             }
         }
 
+        // 強大容錯的 CSV 解析器：支援引號與逗號巢狀結構
         function parseCSV(text) {
             const lines = text.split(/\r?\n/);
             const result = [];
-            lines.forEach((line) => {
+            
+            lines.forEach((line, index) => {
                 if (!line.trim()) return;
-                const columns = line.split(',');
-                if (columns.length >= 6) {
-                    result.push({
-                        q: columns[0].trim(),
-                        opts: [columns[1].trim(), columns[2].trim(), columns[3].trim(), columns[4].trim()],
-                        ans: columns[5].trim()
-                    });
+                
+                // 跳過第一列標頭
+                if (index === 0 && (line.includes("題目類型") || line.includes("配分"))) {
+                    return;
+                }
+
+                // 使用正規表達式完美切分包含雙引號與逗號的 CSV 欄位
+                const matches = line.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)|(?<=,|^)(?=,|$)/g) || [];
+                const columns = [];
+                
+                let currentStr = "";
+                // 修正 match 有時會把欄位切碎或殘留逗號的問題
+                line.split(',').forEach(part => {
+                    if (currentStr) {
+                        currentStr += "," + part;
+                        if (part.endsWith('"')) {
+                            columns.push(currentStr);
+                            currentStr = "";
+                        }
+                    } else if (part.startsWith('"') && !part.endsWith('"')) {
+                        currentStr = part;
+                    } else {
+                        columns.push(part);
+                    }
+                });
+
+                // 清理每個欄位的引號與前後空白
+                const cleanCols = columns.map(col => {
+                    let c = col.trim();
+                    if (c.startsWith('"') && c.endsWith('"')) {
+                        c = c.substring(1, c.length - 1);
+                    }
+                    return c.replace(/""/g, '"').trim(); // 恢復被跳脫的引號
+                });
+
+                // 確保最少要有基本欄位 (類型、配分、題目、答案)
+                if (cleanCols.length >= 4) {
+                    const type = cleanCols[0].toUpperCase();
+                    const questionText = cleanCols[2];
+                    const answerText = cleanCols[3];
+
+                    if (type === 'A') {
+                        // 單選題：抓取後方 4 個選項
+                        const opt1 = cleanCols[4] || "";
+                        const opt2 = cleanCols[5] || "";
+                        const opt3 = cleanCols[6] || "";
+                        const opt4 = cleanCols[7] || "";
+
+                        result.push({
+                            q: questionText,
+                            opts: [opt1, opt2, opt3, opt4],
+                            ans: answerText // 保持原本字串(1~4)，會與原本系統 radio 價值的 val (1~4) 契合
+                        });
+                    } else if (type === 'B') {
+                        // 簡答/填空題：不放 opts，答案包裝成陣列以相容你原本的填空邏輯
+                        result.push({
+                            q: questionText,
+                            ans: [answerText]
+                        });
+                    }
+                    // 如果之後有需要擴充 C:多選題，可以在此處追加 else if (type === 'C') 
                 }
             });
             return result;
