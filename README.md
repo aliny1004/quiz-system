@@ -1,1 +1,187 @@
-# quiz-system
+# 練習測驗系統
+
+這是一個單檔式 HTML 練習測驗系統，適合用來整理、匯入與練習資安證照或大型題庫，例如 EDRP、CEH、CTIA、OSCP 等。專案目前以 `quiz.html` 作為最新版主程式，直接用瀏覽器開啟即可使用，不需要後端伺服器。
+
+## 主要功能
+
+- 支援 `.json`、`.csv`、`.txt` 題庫匯入
+- 自動分辨選擇題與填空題
+- 歷史題庫保存在 LocalStorage，可從下拉選單重新載入
+- 支援打亂題目、打亂選項、隱藏已答對題目
+- 支援錯題模式：只考近五次測驗中答錯過的題目
+- 支援答案提示模式：點選選項後短暫提示正確答案
+- 支援指定出題數量與指定題號範圍
+- 支援作答計時器顯示/隱藏
+- 支援明暗模式切換
+- 支援首頁動態 Matrix 背景
+- 支援自動捲動到下一題
+- 支援本次錯題再次測驗
+- 支援學習統計：正確率歷史、每題作答次數、答對率、最後作答日期
+- 支援手機與桌面自適應排版
+- 支援 Git tag / GitHub release 版本管理
+
+## 使用方式
+
+1. 開啟 `quiz.html`
+2. 從歷史題庫選擇既有題庫，或上傳 `.json`、`.csv`、`.txt` 題庫
+3. 設定測驗模式與出題範圍
+4. 點擊「開始測驗」
+5. 完成後可查看統計、再次測驗或只重測錯題
+
+## 檔案策略
+
+主分支只保留：
+
+```text
+README.md
+quiz.html
+```
+
+歷史版本不再以 `quiz_v2.html`、`quiz_v3.html` 這種檔案形式保留在主分支。舊版會透過 Git tag 與 GitHub Release 保存，例如：
+
+```text
+v1.0.0
+v2.0.0
+...
+v11.0.0
+```
+
+平常只修改 `quiz.html`。
+
+## 版本規則
+
+- 小修正：`v11.0.1`、`v11.0.2`
+- 中型功能或重要改善：`v11.1.0`
+- 階段性大版本：`v12.0.0`
+
+建議流程：
+
+```text
+修改 quiz.html
+確認功能正常
+commit
+tag
+push
+建立 GitHub Release
+```
+
+## 架構圖
+
+此架構圖會跟隨 `quiz.html` 的重大結構更新同步維護，用來快速理解畫面區塊與主要函式責任。
+
+```text
+練習測驗系統
+├── Head
+│   └── 內建 CSS
+│       ├── 全域版面與明暗模式
+│       ├── 首頁控制台樣式
+│       ├── 測驗雙欄版面
+│       ├── 學習統計頁
+│       ├── 動態 header / footer
+│       └── 手機 RWD 版面
+│
+├── Body
+│   ├── .exam-header
+│   │   ├── 系統名稱 / 返回首頁
+│   │   ├── 明暗模式切換器
+│   │   └── 作答計時器 #examTimer
+│   │
+│   ├── #managementSection
+│   │   ├── 首頁標題與說明
+│   │   ├── .history-card
+│   │   │   ├── 題庫下拉選單
+│   │   │   ├── 上傳題庫 icon
+│   │   │   ├── 刪除題庫 icon
+│   │   │   ├── 開始測驗
+│   │   │   ├── 學習統計
+│   │   │   ├── 測驗模式 checkbox grid
+│   │   │   └── 出題範圍 question-scope-panel
+│   │   └── .file-hint
+│   │       └── 可收折題庫格式說明
+│   │
+│   ├── #statsSection
+│   │   ├── 正確率歷史圖表
+│   │   ├── 最近測驗紀錄
+│   │   └── 題庫學習統計摘要
+│   │
+│   ├── #quizSection
+│   │   └── .quiz-active-layout
+│   │       ├── .exam-left-panel
+│   │       │   ├── #summaryBox
+│   │       │   └── #quizContainer
+│   │       └── .exam-right-panel
+│   │           ├── #examNavGrid
+│   │           └── 狀態圖例
+│   │
+│   └── .exam-footer
+│       ├── 作答提示
+│       └── 完成作答按鈕 #submitBtn
+│
+└── Script
+    ├── 全域狀態與資料模型
+    │   ├── sourceQuizBank
+    │   ├── quizBank
+    │   ├── markedQuestions
+    │   ├── correctlyAnsweredQuestions
+    │   ├── examTimerInterval
+    │   └── totalSeconds
+    │
+    ├── 系統初始化與設定保存
+    │   ├── window.onload
+    │   ├── getQuizSettings()
+    │   ├── loadQuizSettings()
+    │   ├── saveQuizSettings()
+    │   ├── bindSettingsControls()
+    │   ├── bindTooltipControls()
+    │   ├── applyThemeMode()
+    │   └── bindThemeModeControl()
+    │
+    ├── 題庫快取與管理
+    │   ├── initializeBuiltinQuizBanks()
+    │   ├── updateHistoryDropdown()
+    │   └── safeDeleteHistory()
+    │
+    ├── 檔案上傳與解析
+    │   ├── handleFileUpload()
+    │   ├── cleanAndParsePythonFormat()
+    │   ├── parseCSV()
+    │   └── processRowData()
+    │
+    ├── 測驗 session 建立
+    │   ├── setSourceQuizBank()
+    │   ├── getQuestionId()
+    │   ├── normalizeQuestion()
+    │   ├── applyQuestionScope()
+    │   ├── buildQuizSession()
+    │   ├── resetExamTimer()
+    │   ├── startExamTimer()
+    │   ├── loadSavedQuiz()
+    │   └── customStartQuiz()
+    │
+    ├── 考題渲染與互動
+    │   ├── renderQuizQuestions()
+    │   ├── buildNavigationGrid()
+    │   ├── updateNavStatus()
+    │   ├── toggleMark()
+    │   ├── checkQuestionHasAnswer()
+    │   ├── showAnswerHint()
+    │   ├── scrollToNextQuestion()
+    │   ├── recordFirstChoiceAttempt()
+    │   ├── buildWrongRetryQuestions()
+    │   └── getDisplayAnswer()
+    │
+    └── 結算、錯題與學習統計
+        ├── recordCorrectAnswer()
+        ├── recordWrongQuestionHistory()
+        ├── recordLearningStats()
+        ├── startWrongRetryQuiz()
+        └── checkAnswers()
+```
+
+## 維護規則
+
+- 重大結構修改時，同步更新 `README.md` 的架構圖
+- 平常只修改 `quiz.html`
+- 不在主分支新增 `quiz_v*.html` 版本檔
+- 版本保存交給 Git tag 與 GitHub Release
+- Release 附件可放對應版本的 HTML 檔
