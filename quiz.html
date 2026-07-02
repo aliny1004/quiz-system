@@ -1,15 +1,17 @@
 ﻿<!-- 
-檔案：練習測驗系統 (index.html)
+檔案：練習測驗系統 (quiz_v8.html)
 結構與函數對應說明：
   ├── Head: 設定內建 CSS 樣式與 EC-Council 企業藍全域考場佈局配置
   │
   ├── Body (UI 畫面)
   │     ├── .exam-header         - 頂部導覽列：系統名稱與作答計時器 (#examTimer)
+  │     │                         計時器可即時隱藏，但保留佔位避免頂部高度跳動
   │     │
   │     ├── #managementSection   - 管理區塊（首頁面板，具備獨立自適應滾動）
   │     │     ├── .history-card  - 歷史紀錄卡片
-  │     │     │     ├── .history-main-row - 題庫選單、微縮垃圾桶、上傳檔案、開始測驗
-  │     │     │     └── .checkbox-grid    - 多功能設定區（打亂題目、隱藏錯題、隨機選項等）
+  │     │     │     ├── .history-main-row - 題庫選單、微縮垃圾桶、靠右排列的上傳檔案與開始測驗按鈕
+  │     │     │     └── .checkbox-grid    - 多功能設定區：打亂題目、隱藏已答對題目、打亂選項、隱藏作答計時器
+  │     │     │                              checkbox 狀態會寫入 LocalStorage 並於下次載入還原
   │     │     └── .file-hint     - 格式範本提示區塊（自動分辨選擇與填空，支援 .json/.csv/.txt）
   │     │
   │     ├── #quizSection         - 進入測驗後的雙欄側邊評分版面（預設隱藏）
@@ -20,33 +22,53 @@
   │     └── .exam-footer         - 固定釘底導覽列：作答提示與完成作答提交按鈕 (#submitBtn)
   │
   └── Script (邏輯控制)
-        ├── 全域變數定義           - quizBank(題庫), markedQuestions(標記追蹤), examTimerInterval(定時器), totalSeconds(作答秒數)
-        ├── 系統事件生命週期       - window.onload (初始化載入歷史紀錄選單)
+        ├── 全域狀態與資料模型
+        │     ├── sourceQuizBank              - 原始題庫資料，保留完整順序與內容
+        │     ├── quizBank                    - 本次測驗 session 題目清單，可被篩選或打亂
+        │     ├── markedQuestions             - 追蹤本次測驗中被 Mark 的題號
+        │     ├── correctlyAnsweredQuestions  - LocalStorage 保存的已答對題目 id，用於隱藏已答對題目
+        │     ├── examTimerInterval           - 作答計時器 interval
+        │     └── totalSeconds                - 累計作答秒數
+        │
+        ├── 系統事件生命週期與設定保存
+        │     ├── window.onload            - 初始化歷史題庫下拉選單、還原設定、綁定 checkbox、更新計時器顯示
+        │     ├── getQuizSettings()        - 讀取四個 checkbox 狀態並回傳設定物件
+        │     ├── loadQuizSettings()       - 從 LocalStorage 還原使用者上次勾選狀態
+        │     ├── saveQuizSettings()       - 將目前設定寫入 LocalStorage
+        │     ├── bindSettingsControls()   - 監聽設定變更，並讓隱藏計時器即時生效
+        │     └── updateTimerVisibility()  - 使用 visibility/opacity 隱藏計時器，避免 header 版面跳動
         │
         ├── 題庫快取與管理函數
-        │     ├── updateHistoryDropdown()  - 撈取 LocalStorage 紀錄並按時間排序更新下拉選單
-        │     └── safeDeleteHistory()      - 商業級雙重防手殘阻斷，安全確認後移除快取紀錄
+        │     ├── updateHistoryDropdown()  - 撈取 LocalStorage 題庫紀錄並按時間排序更新下拉選單
+        │     └── safeDeleteHistory()      - 雙重確認後安全移除題庫快取紀錄
         │
         ├── 檔案上傳與解析引擎
-        │     ├── handleFileUpload()        - 強制 UTF-8 讀取檔案，判定擴展名並分流解析器，寫入 LocalStorage
-        │     ├── cleanAndParsePythonFormat() - 智慧過濾修復機制：拔除 Python 註解、修復非標準 JSON 陣列
-        │     ├── parseCSV()                - 高級 CSV 解析：完美支援包含引號、逗號與換行的複雜考題
-        │     └── processRowData()          - 核心資料分流：自動判定單選(A/C)或簡答(B)，並為選項「自動補 1. 2. 序號」
+        │     ├── handleFileUpload()          - 強制 UTF-8 讀取檔案，判定副檔名並分流解析器，寫入 LocalStorage
+        │     ├── cleanAndParsePythonFormat() - 智慧過濾修復：移除 Python 註解、修復非標準 JSON 陣列
+        │     ├── parseCSV()                  - CSV 解析：支援包含引號、逗號與換行的複雜考題
+        │     └── processRowData()            - 核心資料分流：自動判定單選(A/C)或簡答(B)，並為選項自動補 1. 2. 序號
         │
-        ├── 模擬考場核心流程
-        │     ├── loadSavedQuiz()           - 讀取 LocalStorage 快取資料並觸發開考流程
-        │     └── customStartQuiz()         - 初始化控制面板：隱藏首頁、啟動 flex 考場、重置並動態跑秒計時器
+        ├── 測驗 session 建立與計時器流程
+        │     ├── setSourceQuizBank()     - 正規化題目並建立原始題庫 sourceQuizBank
+        │     ├── getQuestionId()         - 依題目內容產生穩定 id，供已答對紀錄使用
+        │     ├── normalizeQuestion()     - 補齊題目 id，讓後續模式可擴充
+        │     ├── buildQuizSession()      - 依設定產生本次 quizBank：可隱藏已答對題目、打亂題目
+        │     ├── resetExamTimer()        - 重置計時器文字與秒數
+        │     ├── startExamTimer()        - 啟動作答計時器
+        │     ├── loadSavedQuiz()         - 讀取 LocalStorage 快取題庫並觸發開考流程
+        │     └── customStartQuiz()       - 驗證已選題庫、建立 session、切換考場版面並啟動測驗
         │
         ├── 考題動態渲染與互動
-        │     ├── renderQuizQuestions()     - 智慧文字修復 (消滅問號亂碼) 且「動態生成」考題卡片與 Span 翻譯包裝層
-        │     ├── buildNavigationGrid()     - 動態生成右側 1 行 10 題的 Item Review 網格跳轉按鈕
-        │     ├── updateNavStatus()         - 聯動控制：即時刷新右側網格之「未作答/已作答/已標記」狀態
-        │     ├── toggleMark()              - 切換 ★ Mark 標記狀態並抽換按鈕樣式
-        │     └── checkQuestionHasAnswer()  - 物理檢查函數：判定單選鈕是否有勾或填空欄位是否為空
+        │     ├── renderQuizQuestions()     - 動態生成考題卡片；選項可打亂但保留原始答案 index 以確保判分正確
+        │     ├── buildNavigationGrid()     - 動態生成右側 Item Review 題號跳轉按鈕
+        │     ├── updateNavStatus()         - 即時刷新右側網格之「未作答/已作答/已標記」狀態
+        │     ├── toggleMark()              - 切換 Mark 標記狀態並更新按鈕樣式
+        │     └── checkQuestionHasAnswer()  - 判定單選鈕是否已勾選或填空欄位是否有內容
         │
         └── 結算評分與防呆機制
-              └── checkAnswers()            - 【終極防呆】統計未寫題數並二次彈窗確認；停止計時；禁用全體選項鎖死作答區；
-                                                動態追蹤核對答案並追加紅綠外框；計算四捨五入正確率並渲染結果卡片。
+              ├── recordCorrectAnswer()      - 答對時記錄題目 id 至 LocalStorage，供「隱藏已答對題目」使用
+              └── checkAnswers()             - 統計未作答題數並二次確認；停止計時；禁用作答區；
+                                                核對答案並追加紅綠外框；計算正確率並渲染結果卡片。
 -->
 
 <!DOCTYPE html>
@@ -55,7 +77,7 @@
 <meta charset="UTF-8">
 <title>練習測驗系統</title>
 <style>
-    /* 基礎全域設定與 EC-Council 企業藍配置 - 鎖死視窗高度，禁止最外層滾動 */
+    /* 基礎全域設定與 EC-Council 企業類似配置 - 鎖死視窗高度，禁止最外層滾動 */
     body { 
         font-family: 'Segoe UI', Arial, sans-serif; 
         background-color: #f0f4f8; 
@@ -382,6 +404,7 @@
         white-space: nowrap;
         box-sizing: border-box;
         transition: background 0.2s;
+        margin-right: -8px;     /* 視覺微調：縮小開始測驗按鈕右側留白，對齊左側選單視覺邊界 */
     }
     .btn-start-exam:hover { background-color: #2980b9; }
 
@@ -423,6 +446,7 @@
         box-sizing: border-box;
         transition: background 0.2s;
         flex-shrink: 0;
+        margin-left: auto;     /* 將上傳檔案與開始測驗整組推到右側 */
     }
     .btn-upload-file:hover {
         background-color: #27ae60;
@@ -552,13 +576,24 @@
 </div>
 
 <script>
+    // ===== 全域狀態：原始題庫、本次測驗、標記、計時器與持久化紀錄 =====
+    // 這些系統用 key 不是真正題庫，updateHistoryDropdown() 會排除它們避免出現在下拉選單。
+    const QUIZ_SETTINGS_STORAGE_KEY = 'quiz_sys_settings';
+    const QUIZ_CORRECT_STORAGE_KEY = 'quiz_sys_correct_questions';
+    const QUIZ_METADATA_STORAGE_KEY = 'quiz_sys_metadata';
+    const QUIZ_RESERVED_STORAGE_KEYS = new Set([
+        QUIZ_SETTINGS_STORAGE_KEY,
+        QUIZ_CORRECT_STORAGE_KEY,
+        QUIZ_METADATA_STORAGE_KEY
+    ]);
+
+    // sourceQuizBank 永遠保存完整原始題庫；quizBank 則是套用設定後的本次測驗清單。
     let sourceQuizBank = [];
     let quizBank = [];
     let markedQuestions = {}; // 用於追蹤哪些題號被 Mark
     let examTimerInterval = null; // 用於儲存定時器物件
     let totalSeconds = 0;         // 累計作答秒數
-    let correctlyAnsweredQuestions = new Set(JSON.parse(localStorage.getItem('quiz_sys_correct_questions') || '[]'));
-    const QUIZ_SETTINGS_STORAGE_KEY = 'quiz_sys_settings';
+    let correctlyAnsweredQuestions = new Set(JSON.parse(localStorage.getItem(QUIZ_CORRECT_STORAGE_KEY) || '[]'));
 
     window.onload = function() {
         updateHistoryDropdown();
@@ -567,6 +602,7 @@
         updateTimerVisibility();
     };
 
+    // 集中讀取所有測驗設定，後續新增模式時優先擴充這個物件。
     function getQuizSettings() {
         return {
             shuffleQuestions: document.getElementById('shuffleCheckbox')?.checked || false,
@@ -576,6 +612,7 @@
         };
     }
 
+    // 頁面載入時還原上次勾選狀態，避免使用者每次重開都要重新設定。
     function loadQuizSettings() {
         const saved = JSON.parse(localStorage.getItem(QUIZ_SETTINGS_STORAGE_KEY) || '{}');
         const checkboxMap = {
@@ -593,6 +630,7 @@
         });
     }
 
+    // 任一 checkbox 變更時立即保存，不必等到開始測驗才生效。
     function saveQuizSettings() {
         localStorage.setItem(QUIZ_SETTINGS_STORAGE_KEY, JSON.stringify(getQuizSettings()));
     }
@@ -611,6 +649,7 @@
         });
     }
 
+    // 隱藏計時器時保留 DOM 佔位，避免頂部 header 高度或左右排版跳動。
     function updateTimerVisibility() {
         const timer = document.getElementById('examTimer');
         if (!timer) return;
@@ -646,11 +685,13 @@
         return { ...item, id: getQuestionId(item) };
     }
 
+    // 載入或上傳題庫後統一進入這裡，為每題補穩定 id，方便統計與模式篩選。
     function setSourceQuizBank(list) {
         sourceQuizBank = (Array.isArray(list) ? list : []).map(normalizeQuestion);
         quizBank = [...sourceQuizBank];
     }
 
+    // 依目前設定建立「本次測驗清單」；未來錯題模式、標記模式、指定題數也應接在這裡。
     function buildQuizSession() {
         const settings = getQuizSettings();
         let pool = [...sourceQuizBank];
@@ -666,11 +707,13 @@
         return pool;
     }
 
+    // 答對題目會被記住，供「隱藏已答對題目」在下次建立 session 時排除。
     function recordCorrectAnswer(item) {
         correctlyAnsweredQuestions.add(getQuestionId(item));
-        localStorage.setItem('quiz_sys_correct_questions', JSON.stringify([...correctlyAnsweredQuestions]));
+        localStorage.setItem(QUIZ_CORRECT_STORAGE_KEY, JSON.stringify([...correctlyAnsweredQuestions]));
     }
 
+    // 每次重新開始測驗前先清除舊 interval，避免多個計時器同時累加。
     function resetExamTimer() {
         if (examTimerInterval) clearInterval(examTimerInterval);
         examTimerInterval = null;
@@ -715,12 +758,12 @@
         if(!select) return;
         select.innerHTML = '<option value="">-- 請選擇過去上傳過的題庫 --</option>';
         
-        let metaData = JSON.parse(localStorage.getItem('quiz_sys_metadata') || '{}');
+        let metaData = JSON.parse(localStorage.getItem(QUIZ_METADATA_STORAGE_KEY) || '{}');
         let items = [];
 
         for (let i = 0; i < localStorage.length; i++) {
             const key = localStorage.key(i);
-            if (key.startsWith('quiz_sys_') && key !== 'quiz_sys_metadata') {
+            if (key.startsWith('quiz_sys_') && !QUIZ_RESERVED_STORAGE_KEYS.has(key)) {
                 const displayName = key.replace('quiz_sys_', '');
                 const timestamp = metaData[key] || 0;
                 items.push({ key, displayName, timestamp });
@@ -758,9 +801,9 @@
             if (secondCheck) {
                 // 雙重通關，正式執行刪除與快取清理
                 localStorage.removeItem(selectedKey);
-                let metaData = JSON.parse(localStorage.getItem('quiz_sys_metadata') || '{}');
+                let metaData = JSON.parse(localStorage.getItem(QUIZ_METADATA_STORAGE_KEY) || '{}');
                 delete metaData[selectedKey];
-                localStorage.setItem('quiz_sys_metadata', JSON.stringify(metaData));
+                localStorage.setItem(QUIZ_METADATA_STORAGE_KEY, JSON.stringify(metaData));
                 
                 // 更新下拉選單介面
                 updateHistoryDropdown();
@@ -881,9 +924,9 @@
                     const saveKey = 'quiz_sys_' + fileName;
                     localStorage.setItem(saveKey, JSON.stringify(quizBank));
                     
-                    let metaData = JSON.parse(localStorage.getItem('quiz_sys_metadata') || '{}');
+                    let metaData = JSON.parse(localStorage.getItem(QUIZ_METADATA_STORAGE_KEY) || '{}');
                     metaData[saveKey] = Date.now();
-                    localStorage.setItem('quiz_sys_metadata', JSON.stringify(metaData));
+                    localStorage.setItem(QUIZ_METADATA_STORAGE_KEY, JSON.stringify(metaData));
                     
                     updateHistoryDropdown();
                     const select = document.getElementById('historySelect');
@@ -920,6 +963,7 @@
     }
     
     // 開考流程與初始化控制面板
+    // 入口責任：驗證題庫、建立 session、切換畫面、渲染題目與啟動計時器。
     function customStartQuiz() {
         const select = document.getElementById('historySelect');
         if(!select || !select.value) {
@@ -996,6 +1040,7 @@
                 const optsGroup = document.createElement('div');
                 optsGroup.className = 'options-group';
                 
+                // 顯示順序可以打亂，但 value 永遠保留原始 index，答案判斷才不會被打亂影響。
                 let optionsToRender = item.opts.map((opt, optIndex) => ({
                     text: opt,
                     originalIndex: optIndex
@@ -1115,6 +1160,7 @@
     }
 
 // 核對全體答案 (完美保留原底色，僅追加紅綠外框)
+    // 交卷入口：防呆確認、停止計時、鎖定作答、判分、記錄答對題目並渲染統計結果。
     function checkAnswers() {
 	// 【防呆機制】
         // 1. 先統計有幾題尚未作答
@@ -1214,7 +1260,7 @@
 
         const summaryBox = document.getElementById('summaryBox');
         const statsText = document.getElementById('statsText');
-        statsText.innerHTML = `測驗完成！您答對了 ${correctCount} / ${quizBank.length} 題。<br>正確率 ${accuracyRate}%`;
+        statsText.innerHTML = `測驗完成！您答對了 ${correctCount} / ${quizBank.length} 題<br>正確率 ${accuracyRate}%`;
         summaryBox.style.display = 'block';
         summaryBox.scrollIntoView({ behavior: 'smooth' });
 	const submitBtn = document.getElementById('submitBtn');
