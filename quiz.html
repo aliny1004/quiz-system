@@ -328,13 +328,16 @@
                     inputElem.disabled = true;
 
                     const validAnswers = Array.isArray(item.ans) ? item.ans : [item.ans];
+                    // 只要使用者的答案符合任何一個設定的正確答案，都算對
                     isCorrect = validAnswers.some(ans => ans.trim() === userAns);
+
+                    // 關鍵修改：取陣列的最後一個元素作為唯一顯示的正確答案
+                    const lastCorrectAnswer = validAnswers[validAnswers.length - 1].trim();
 
                     if (isCorrect) {
                         displayHtml = `結果： 正確！`;
                     } else {
-                        const correctShow = validAnswers.join(' 或 ');
-                        displayHtml = `你的答案：${userAns ? userAns : "未填寫"}<br>結果：❌ 錯誤（正確答案：${correctShow}）`;
+                        displayHtml = `你的答案：${userAns ? userAns : "未填寫"}<br>結果：❌ 錯誤（正確答案：${lastCorrectAnswer}）`;
                     }
                 }
 
