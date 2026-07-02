@@ -1,3 +1,54 @@
+<!-- 
+檔案：練習測驗系統 (index.html)
+結構與函數對應說明：
+  ├── Head: 設定內建 CSS 樣式與 EC-Council 企業藍全域考場佈局配置
+  │
+  ├── Body (UI 畫面)
+  │     ├── .exam-header         - 頂部導覽列：系統名稱與作答計時器 (#examTimer)
+  │     │
+  │     ├── #managementSection   - 管理區塊（首頁面板，具備獨立自適應滾動）
+  │     │     ├── .history-card  - 歷史紀錄卡片
+  │     │     │     ├── .history-main-row - 題庫選單、微縮垃圾桶、上傳檔案、開始測驗
+  │     │     │     └── .checkbox-grid    - 多功能設定區（打亂題目、隱藏錯題、隨機選項等）
+  │     │     └── .file-hint     - 格式範本提示區塊（自動分辨選擇與填空，支援 .json/.csv/.txt）
+  │     │
+  │     ├── #quizSection         - 進入測驗後的雙欄側邊評分版面（預設隱藏）
+  │     │     └── .quiz-active-layout
+  │     │           ├── .exam-left-panel  - 左側題目區：結果結算區 (#summaryBox) 與動態題目容器 (#quizContainer)
+  │     │           └── .exam-right-panel - 右側狀態面板：題目跳轉網格 (#examNavGrid) 與狀態圖例說明
+  │     │
+  │     └── .exam-footer         - 固定釘底導覽列：作答提示與完成作答提交按鈕 (#submitBtn)
+  │
+  └── Script (邏輯控制)
+        ├── 全域變數定義           - quizBank(題庫), markedQuestions(標記追蹤), examTimerInterval(定時器), totalSeconds(作答秒數)
+        ├── 系統事件生命週期       - window.onload (初始化載入歷史紀錄選單)
+        │
+        ├── 題庫快取與管理函數
+        │     ├── updateHistoryDropdown()  - 撈取 LocalStorage 紀錄並按時間排序更新下拉選單
+        │     └── safeDeleteHistory()      - 商業級雙重防手殘阻斷，安全確認後移除快取紀錄
+        │
+        ├── 檔案上傳與解析引擎
+        │     ├── handleFileUpload()        - 強制 UTF-8 讀取檔案，判定擴展名並分流解析器，寫入 LocalStorage
+        │     ├── cleanAndParsePythonFormat() - 智慧過濾修復機制：拔除 Python 註解、修復非標準 JSON 陣列
+        │     ├── parseCSV()                - 高級 CSV 解析：完美支援包含引號、逗號與換行的複雜考題
+        │     └── processRowData()          - 核心資料分流：自動判定單選(A/C)或簡答(B)，並為選項「自動補 1. 2. 序號」
+        │
+        ├── 模擬考場核心流程
+        │     ├── loadSavedQuiz()           - 讀取 LocalStorage 快取資料並觸發開考流程
+        │     └── customStartQuiz()         - 初始化控制面板：隱藏首頁、啟動 flex 考場、重置並動態跑秒計時器
+        │
+        ├── 考題動態渲染與互動
+        │     ├── renderQuizQuestions()     - 智慧文字修復 (消滅問號亂碼) 且「動態生成」考題卡片與 Span 翻譯包裝層
+        │     ├── buildNavigationGrid()     - 動態生成右側 1 行 10 題的 Item Review 網格跳轉按鈕
+        │     ├── updateNavStatus()         - 聯動控制：即時刷新右側網格之「未作答/已作答/已標記」狀態
+        │     ├── toggleMark()              - 切換 ★ Mark 標記狀態並抽換按鈕樣式
+        │     └── checkQuestionHasAnswer()  - 物理檢查函數：判定單選鈕是否有勾或填空欄位是否為空
+        │
+        └── 結算評分與防呆機制
+              └── checkAnswers()            - 【終極防呆】統計未寫題數並二次彈窗確認；停止計時；禁用全體選項鎖死作答區；
+                                                動態追蹤核對答案並追加紅綠外框；計算四捨五入正確率並渲染結果卡片。
+-->
+
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
@@ -181,13 +232,13 @@
         margin-bottom: 15px;
         color: #2c3e50;
         padding-right: 100px;
-        /* 🎯 關鍵核心：保留字串內的 \n 換行符號，同時維持自動折行，避免文字爆框 */
+        /* 保留字串內的 \n 換行符號，同時維持自動折行，避免文字爆框 */
         white-space: pre-wrap; 
     }
     .correct { border-left: 5px solid #2ecc71; background-color: #f9fdfa; }
     .wrong { border-left: 5px solid #e74c3c; background-color: #fffbfb; }
     .options-group { margin: 10px 0; }
-    /* 🎯 完美修正版：改用縱向分層 Flex 結構，徹底搞定單選鈕移位與換行問題 */
+    /* 改用縱向分層 Flex 結構，徹底搞定單選鈕移位與換行問題 */
     .option-label { 
         display: flex;             /* 啟用 flex */
         align-items: flex-start;   /* 關鍵：對齊最頂部，防止中英文變多時按鈕亂飄 */
@@ -207,7 +258,7 @@
         flex-shrink: 0;            /* 防止按鈕被字數擠壓變形 */
     }
 
-    /* 🎯 文字區塊：強制讓沉浸式翻譯的中文一律在英文正下方換行 */
+    /* 強制讓沉浸式翻譯的中文一律在英文正下方換行 */
     .opt-text {
         display: flex;
         flex-direction: column;    /* 縱向排列：英文在上、中文在下 */
@@ -275,6 +326,113 @@
     .result-text { font-weight: bold; margin-top: 10px; display: none; line-height: 1.5; }
     .correct-ans { color: green; }
     .wrong-ans { color: red; }
+    /* 核心列排版 */
+    .history-main-row {
+        display: flex;
+        align-items: center;
+        gap: 8px; /* 讓選單、垃圾桶、開始按鈕之間有舒適的微小間距 */
+        margin-bottom: 18px;
+    }
+
+/* 微縮垃圾桶（邊框等比例縮小，緊貼選單，不影響開始測驗） */
+    .btn-trash-delete {
+        height: 33px;              /* 精準微縮：選單高度 40px 的三分之二 */
+        width: 34px;               /* 寬度同步等比例縮小 */
+        background-color: #ffffff; /* 純白底 */
+        border: 1px solid #94a3b8; /* 邊框改為 1px，維持縮小後的精緻比例 */
+        color: #475569;            /* 接近黑的質感深炭灰 */
+        border-radius: 4px;        
+        font-size: 18px;           /* 縮小 🗑 符號本體，完美保留內部條紋細節 */
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-sizing: border-box;
+        transition: all 0.2s ease;
+        font-weight: normal; 
+        flex-shrink: 0;            
+
+        /* 保持依附在選單右側，不驚動開始測驗的位置 */
+        margin-left: -15px;         
+        margin-right: 10px;         
+    }
+
+    /* 觸碰效果（Hover）：同樣維持 1px 的完美比例，但順暢變身警告烈紅 */
+    .btn-trash-delete:hover {
+        background-color: #fff5f5; 
+        border-color: #ef4444;     /* 🎯 保持 1px 比例的紅框 */
+        color: #b91c1c;            
+    }
+
+
+    /* 開始測驗按鈕（維持醒目的主視覺藍色） */
+    .btn-start-exam {
+        height: 40px;
+        padding: 0 24px;
+        background-color: #3498db;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        font-size: 15px;
+        font-weight: bold;
+        cursor: pointer;
+        white-space: nowrap;
+        box-sizing: border-box;
+        transition: background 0.2s;
+    }
+    .btn-start-exam:hover { background-color: #2980b9; }
+
+    /* 下方多勾勾網格 */
+    .checkbox-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(160px, 1fr));
+        gap: 10px 20px;
+        border-top: 1px dashed #e2e8f0;
+        padding-top: 15px;
+    }
+    .shuffle-label {
+        display: flex;
+        align-items: center;
+        font-size: 13.5px;
+        color: #475569;
+        cursor: pointer;
+        user-select: none;
+    }
+    .shuffle-label input {
+        margin-right: 8px;
+        width: 16px;
+        height: 16px;
+        cursor: pointer;
+    }
+
+    /* 上傳檔案按鈕 */
+    .btn-upload-file {
+        height: 40px;
+        padding: 0 24px;           /* 使用跟開始測驗一模一樣的 padding */
+        background-color: #2ecc71; /* 維持原本上傳檔案的綠色 */
+        color: white;
+        border: none;
+        border-radius: 6px;
+        font-size: 15px;           /* 一模一樣的字型大小 */
+        font-weight: bold;         /* 一模一樣的粗體 */
+        cursor: pointer;
+        white-space: nowrap;
+        box-sizing: border-box;
+        transition: background 0.2s;
+        flex-shrink: 0;
+    }
+    .btn-upload-file:hover {
+        background-color: #27ae60;
+    }
+
+    /* 確保原本歷史主橫列的間距與對齊良好 */
+    .history-main-row {
+        display: flex;
+        align-items: center;
+        gap: 8px; /* 元素之間的間距 */
+        margin-bottom: 18px;
+        width: 100%;
+    }
 </style>
 </head>
 <body>
@@ -288,45 +446,61 @@
 
 <div id="managementSection" class="management-section">
     <h1> 練習測驗系統 </h1>
-    <div class="box">
-        <h3>歷史紀錄：從已儲存題庫中選擇</h3>
-        <select id="historySelect">
-            <option value="">-- 請選擇過去上傳過的題庫 --</option>
-        </select>
-        <button class="action-btn" onclick="customStartQuiz()">開始測驗</button>
-        <button class="action-btn" style="background-color: #95a5a6;" onclick="deleteSavedQuiz()">刪除此紀錄</button>
+    
+    <div class="history-card" translate="no">
+        <div class="history-card-title">歷史紀錄：從已儲存題庫中選擇</div>
+        
+        <!-- 第一層核心動線：選單 ➔ 垃圾桶(緊貼) ➔ 上傳檔案 ➔ 開始測驗 -->
+        <div class="history-main-row">
+            <select id="historySelect">
+                <option value="">-- 請選擇過去上傳過的題庫 --</option>
+            </select>
+            
+            <!-- 🗑 2/3 微縮垃圾桶 -->
+            <button type="button" class="btn-trash-delete" onclick="safeDeleteHistory()" title="刪除此紀錄">🗑</button>
+            
+            <!-- 📤 新增：移到上排的隱藏 input 與精簡版上傳檔案按鈕 -->
+            <input type="file" id="fileInput" accept=".json,.csv,.txt" style="display: none;" onchange="handleFileUpload(this)">
+            <button type="button" class="btn-upload-file" onclick="document.getElementById('fileInput').click()">上傳檔案</button>
+            
+            <!-- 藍色開始測驗按鈕 -->
+            <button type="button" class="btn-start-exam" onclick="customStartQuiz()">開始測驗</button>
+        </div>
+        
+        <!-- 第二層：多功能設定勾選網格 -->
+        <div class="checkbox-grid">
+            <label class="shuffle-label"><input type="checkbox" id="shuffleCheckbox"> 打亂題目</label>
+            <label class="shuffle-label"><input type="checkbox" id="hideCorrectCheckbox"> 隱藏已答對題目</label>
+            <label class="shuffle-label"><input type="checkbox" id="shuffleOptionsCheckbox"> 打亂選項</label>
+            <label class="shuffle-label"><input type="checkbox" id="showTimerCheckbox" checked> 顯示作答計時器</label>
+        </div>
     </div>
 
-    <div class="box">
-        <h3>新上傳：新增或更新題庫</h3>
-        <input type="file" id="fileInput" accept=".json,.csv,.txt" style="display: none;" onchange="handleFileUpload(this)">
-        <button class="upload-btn" onclick="document.getElementById('fileInput').click()">選擇新檔案上傳 (.json / .csv / .txt)</button>
+    <!-- 💡 提示區塊：已將可接受檔案類型整合進來 -->
+    <div class="file-hint">
+        <div class="hint-title">💡 <strong>提示：</strong> 系統會自動分辨是「選擇題」還是「填空題」喔！(支援格式：.json / .csv / .txt)</div>
         
-        <div class="file-hint">
-            <div class="hint-title">💡 <strong>提示：</strong> 系統會自動分辨是「選擇題」還是「填空題」喔！</div>
-            
-            <div class="hint-item">
-                <strong>1. CSV 格式說明 (支援包含引號與逗號的複雜題目)：</strong>
-                <pre><code>欄位：題目類型(A/B), 配分, 題目, 答案, 選項1, 選項2, 選項3, 選項4
+        <div class="hint-item">
+            <strong>1. CSV 格式說明 (支援包含引號與逗號的複雜題目)：</strong>
+            <pre><code>欄位：題目類型(A/B), 配分, 題目, 答案, 選項1, 選項2, 選項3, 選項4
 範例 A (單選)：A,1,"這是題目, 包含逗號",3,選項A,選項B,選項C,選項D
 範例 B (簡答)：B,1,"請輸入...的英文",Apple,,,,</code></pre>
-            </div>
+        </div>
 
-            <div class="hint-item">
-                <strong>2. JSON 英文填空格式：</strong>
-                <pre><code>[ {"q":"中文", "ans":["答案A", "答案B"]} ]</code></pre>
-            </div>
-            
-            <div class="hint-item">
-                <strong>3. JSON 選擇題格式：</strong>
-                <pre><code>[ 
+        <div class="hint-item">
+            <strong>2. JSON 英文填空格式：</strong>
+            <pre><code>[ {"q":"中文", "ans":["答案A", "答案B"]} ]</code></pre>
+        </div>
+        
+        <div class="hint-item">
+            <strong>3. JSON 選擇題格式：</strong>
+            <pre><code>[ 
   {
     "q": "題目", 
     "opts": ["1.選項A", "2.選項B", "3.選項C", "4.選項D"], 
     "ans": "3"
   } 
 ]</code></pre>
-            </div>
         </div>
     </div>
 </div>
@@ -429,25 +603,39 @@
         });
     }
 
-    // 刪除指定的儲存紀錄
-    function deleteSavedQuiz() {
+// 二階段安全刪除確認（對應 HTML 的 原safeDeleteHistory）
+    function safeDeleteHistory() {
         const select = document.getElementById('historySelect');
         const selectedKey = select.value;
+        
+        // 第一防線：防呆檢查是否有選取題庫
         if(!selectedKey) {
-            alert("請先選擇要刪除的紀錄！");
+            alert("請先從下拉選單中，選擇一個想要刪除的題庫紀錄！");
             return;
         }
-        if(confirm(`確認要刪除「${selectedKey.replace('quiz_sys_', '')}」嗎？`)) {
-            localStorage.removeItem(selectedKey);
-            let metaData = JSON.parse(localStorage.getItem('quiz_sys_metadata') || '{}');
-            delete metaData[selectedKey];
-            localStorage.setItem('quiz_sys_metadata', JSON.stringify(metaData));
-            updateHistoryDropdown();
-            alert("紀錄已成功刪除。");
+        
+        // 🚨 第一階段警告彈窗：詢問是否確認刪除
+        const firstCheck = confirm(`警告：您確定要永久刪除「${selectedKey.replace('quiz_sys_', '')}」嗎？\n此操作將無法復原！`);
+        
+        if (firstCheck) {
+            // 🚨 第二階段警告彈窗：終極手殘攔截
+            const secondCheck = confirm("最後確認：真的要刪除嗎？刪除後該題庫資料將從瀏覽器中徹底抹除。");
+            
+            if (secondCheck) {
+                // 雙重通關，正式執行刪除與快取清理
+                localStorage.removeItem(selectedKey);
+                let metaData = JSON.parse(localStorage.getItem('quiz_sys_metadata') || '{}');
+                delete metaData[selectedKey];
+                localStorage.setItem('quiz_sys_metadata', JSON.stringify(metaData));
+                
+                // 更新下拉選單介面
+                updateHistoryDropdown();
+                alert("紀錄已成功刪除。");
+            }
         }
     }
 
-    // 🎯 最新修復版：上傳時自動為選項補上 "1. ", "2. " 序號，完美阻斷引號內部的換行與逗號
+    // 上傳時自動為選項補上 "1. ", "2. " 序號，完美阻斷引號內部的換行與逗號
     function parseCSV(text) {
         let result = [];
         let row = [];
@@ -533,7 +721,7 @@
         }
     }
 
-    // 🎯 終極修復版 2：強制指定 UTF-8 編碼讀取，消滅問號亂碼
+    // 強制指定 UTF-8 編碼讀取，消滅問號亂碼
     function handleFileUpload(input) {
         const files = input.files;
         if (!files || files.length === 0) return;
@@ -564,6 +752,10 @@
                     localStorage.setItem('quiz_sys_metadata', JSON.stringify(metaData));
                     
                     updateHistoryDropdown();
+                    const select = document.getElementById('historySelect');
+                    if (select) {
+                        select.value = saveKey;
+                    }
                     alert(`檔案「${fileName}」上傳並解析成功！共 ${quizBank.length} 題，請選取並開始測驗。`);
                 } else {
                     alert("解析出來的題庫內容為空，請檢查格式。");
@@ -609,13 +801,13 @@
         }
 
         document.getElementById('managementSection').style.display = 'none';
-        document.getElementById('quizSection').style.display = 'flex'; // 🎯 修正為 flex 佈局
+        document.getElementById('quizSection').style.display = 'flex'; // 修正為 flex 佈局
         markedQuestions = {};
 
         renderQuizQuestions();
         buildNavigationGrid();
 	
-	// 🎯 核心新增：點擊開始測驗時，重置並啟動秒錶計時
+	// 點擊開始測驗時，重置並啟動秒錶計時
         if (examTimerInterval) clearInterval(examTimerInterval);
         totalSeconds = 0;
         document.getElementById('examTimer').textContent = "作答時間 00:00:00";
@@ -678,10 +870,10 @@
                     const radio = document.createElement('input');
                     radio.type = 'radio';
                     radio.name = `q_${index}`;
-                    radio.value = String(optIndex + 1); // 🎯 修正：正確綁定為數字 "1", "2", "3", "4"
+                    radio.value = String(optIndex + 1); // 修正：正確綁定為數字 "1", "2", "3", "4"
                     radio.onchange = function() { updateNavStatus(index, 'answered'); };
                     
-		    // 🎯 核心修正：將文字用 span 包裹，給翻譯軟體一個乾淨的對象，徹底解決亂換行問題
+		    // 將文字用 span 包裹，給翻譯軟體一個乾淨的對象，徹底解決亂換行問題
                     label.appendChild(radio);
                     
                     const optTextSpan = document.createElement('span');
