@@ -4,15 +4,16 @@
   ├── Head: 設定內建 CSS 樣式與 EC-Council 企業藍全域考場佈局配置
   │
   ├── Body (UI 畫面)
-  │     ├── .exam-header         - 頂部導覽列：系統名稱與作答計時器 (#examTimer)
+  │     ├── .exam-header         - 頂部導覽列：系統名稱、明暗模式切換器與作答計時器 (#examTimer)
   │     │                         計時器可即時隱藏，但保留佔位避免頂部高度跳動
   │     │
   │     ├── #managementSection   - 管理區塊（首頁面板，具備獨立自適應滾動）
   │     │     ├── .history-card  - 歷史紀錄卡片
   │     │     │     ├── .history-main-row - 題庫選單、微縮垃圾桶、靠右排列的上傳檔案與開始測驗按鈕
-  │     │     │     └── .checkbox-grid    - 多功能設定區：打亂題目、隱藏已答對題目、打亂選項、隱藏作答計時器
+  │     │     │     ├── .checkbox-grid    - 多功能設定區：打亂題目、隱藏已答對題目、錯題模式、打亂選項、答案提示、隱藏作答計時器
+  │     │     │     └── .question-scope-panel - 出題範圍設定：全部、隨機題數、指定題號區間，並提示目前題庫總題數
   │     │     │                              checkbox 狀態會寫入 LocalStorage 並於下次載入還原
-  │     │     └── .file-hint     - 格式範本提示區塊（自動分辨選擇與填空，支援 .json/.csv/.txt）
+  │     │     └── .file-hint     - 可收折格式範本提示區塊（自動分辨選擇與填空，支援 .json/.csv/.txt）
   │     │
   │     ├── #quizSection         - 進入測驗後的雙欄側邊評分版面（預設隱藏）
   │     │     └── .quiz-active-layout
@@ -31,12 +32,15 @@
         │     └── totalSeconds                - 累計作答秒數
         │
         ├── 系統事件生命週期與設定保存
-        │     ├── window.onload            - 初始化歷史題庫下拉選單、還原設定、綁定 checkbox、更新計時器顯示
-        │     ├── getQuizSettings()        - 讀取四個 checkbox 狀態並回傳設定物件
+        │     ├── window.onload            - 初始化明暗模式、歷史題庫下拉選單、還原設定、綁定 checkbox、更新計時器顯示
+        │     ├── getQuizSettings()        - 讀取首頁 checkbox 狀態並回傳設定物件
         │     ├── loadQuizSettings()       - 從 LocalStorage 還原使用者上次勾選狀態
         │     ├── saveQuizSettings()       - 將目前設定寫入 LocalStorage
         │     ├── bindSettingsControls()   - 監聽設定變更，並讓隱藏計時器即時生效
-        │     └── updateTimerVisibility()  - 使用 visibility/opacity 隱藏計時器，避免 header 版面跳動
+        │     ├── updateTimerVisibility()  - 使用 visibility/opacity 隱藏計時器，避免 header 版面跳動
+        │     ├── applyThemeMode()         - 套用正常/深色模式
+        │     ├── loadThemeMode()          - 從 LocalStorage 還原上次使用的明暗模式
+        │     └── bindThemeModeControl()   - 綁定太陽/月亮滑動切換器並保存使用者偏好
         │
         ├── 題庫快取與管理函數
         │     ├── updateHistoryDropdown()  - 撈取 LocalStorage 題庫紀錄並按時間排序更新下拉選單
@@ -52,23 +56,31 @@
         │     ├── setSourceQuizBank()     - 正規化題目並建立原始題庫 sourceQuizBank
         │     ├── getQuestionId()         - 依題目內容產生穩定 id，供已答對紀錄使用
         │     ├── normalizeQuestion()     - 補齊題目 id，讓後續模式可擴充
-        │     ├── buildQuizSession()      - 依設定產生本次 quizBank：可隱藏已答對題目、打亂題目
+        │     ├── applyQuestionScope()    - 套用出題範圍：全部、隨機題數、指定原始題號區間
+        │     ├── buildQuizSession()      - 依設定產生本次 quizBank：可套用錯題模式、隱藏已答對題目、出題範圍、打亂題目
         │     ├── resetExamTimer()        - 重置計時器文字與秒數
         │     ├── startExamTimer()        - 啟動作答計時器
         │     ├── loadSavedQuiz()         - 讀取 LocalStorage 快取題庫並觸發開考流程
         │     └── customStartQuiz()       - 驗證已選題庫、建立 session、切換考場版面並啟動測驗
         │
         ├── 考題動態渲染與互動
-        │     ├── renderQuizQuestions()     - 動態生成考題卡片；選項可打亂但保留原始答案 index 以確保判分正確
+        │     ├── renderQuizQuestions()     - 動態生成考題卡片；選項可打亂但保留原始答案 index；答案提示模式可短暫標出正確選項
         │     ├── buildNavigationGrid()     - 動態生成右側 Item Review 題號跳轉按鈕
         │     ├── updateNavStatus()         - 即時刷新右側網格之「未作答/已作答/已標記」狀態
         │     ├── toggleMark()              - 切換 Mark 標記狀態並更新按鈕樣式
-        │     └── checkQuestionHasAnswer()  - 判定單選鈕是否已勾選或填空欄位是否有內容
+        │     ├── checkQuestionHasAnswer()  - 判定單選鈕是否已勾選或填空欄位是否有內容
+        │     ├── showAnswerHint()           - 答案提示模式下，點選任一選項後讓正確選項亮綠兩秒
+        │     ├── scrollToNextQuestion()      - 選完選擇題後延遲 0.5 秒平滑捲動；答案提示模式下答錯會停留原題
+        │     ├── recordFirstChoiceAttempt()  - 記錄選擇題第一次點選是否答錯，供本次錯題再次測驗使用
+        │     ├── buildWrongRetryQuestions()  - 合併第一次點錯題與最後作答題之前跳過未答的題目
+        │     └── getDisplayAnswer()         - 統一產生答案顯示文字，供交卷錯題提示使用
         │
         └── 結算評分與防呆機制
               ├── recordCorrectAnswer()      - 答對時記錄題目 id 至 LocalStorage，供「隱藏已答對題目」使用
+              ├── recordWrongQuestionHistory() - 每次完成測驗後記錄該題庫錯題，最多保留最近五次
+              ├── startWrongRetryQuiz()       - 以本次第一次點錯的選擇題建立臨時重測
               └── checkAnswers()             - 統計未作答題數並二次確認；停止計時；禁用作答區；
-                                                核對答案並追加紅綠外框；計算正確率並渲染結果卡片。
+                                                核對答案並追加紅綠外框；計算正確率並渲染結果卡片；答案提示不參與判分。
 -->
 
 <!DOCTYPE html>
@@ -90,6 +102,20 @@
         height: 100vh;     /* 鎖死在螢幕高度 */
         overflow: hidden;  /* 關鍵：拔除最外層的滾輪 */
     }
+    body,
+    .exam-header,
+    .management-section,
+    .exam-left-panel,
+    .exam-right-panel,
+    .info-card,
+    .card,
+    .summary,
+    .option-label,
+    select,
+    .blank-input,
+    .exam-footer {
+        transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+    }
     
     /* 頂部導覽列 */
     .exam-header {
@@ -104,6 +130,54 @@
         font-weight: bold;
         flex-shrink: 0;   /* 防止被擠壓 */
     }
+    .header-tools {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        flex-shrink: 0;
+    }
+    .theme-switch {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        cursor: pointer;
+        user-select: none;
+    }
+    .theme-switch input {
+        position: absolute;
+        opacity: 0;
+        pointer-events: none;
+    }
+    .theme-icon {
+        font-size: 15px;
+        line-height: 1;
+    }
+    .theme-slider {
+        position: relative;
+        width: 48px;
+        height: 24px;
+        border-radius: 999px;
+        background-color: #f1c40f;
+        box-shadow: inset 0 0 0 1px rgba(255,255,255,0.22);
+    }
+    .theme-slider::after {
+        content: "";
+        position: absolute;
+        top: 3px;
+        left: 3px;
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        background-color: #fff;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.28);
+        transition: transform 0.2s ease;
+    }
+    .theme-switch input:checked + .theme-slider {
+        background-color: #5865f2;
+    }
+    .theme-switch input:checked + .theme-slider::after {
+        transform: translateX(24px);
+    }
     .exam-header .proctor-status {
         background-color: #27ae60;
         padding: 4px 10px;
@@ -112,6 +186,90 @@
         min-width: 150px;
         text-align: center;
         box-sizing: border-box;
+    }
+
+    /* 深色模式：只覆蓋色彩，不改動既有版面與測驗流程 */
+    body.dark-mode {
+        background-color: #111827;
+        color: #d8dee9;
+    }
+    body.dark-mode .exam-header,
+    body.dark-mode .exam-footer {
+        background-color: #0b1220;
+        color: #f8fafc;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.36);
+    }
+    body.dark-mode h1,
+    body.dark-mode .card-title,
+    body.dark-mode .info-card .info-val,
+    body.dark-mode .hint-title,
+    body.dark-mode .summary-text {
+        color: #f8fafc;
+    }
+    body.dark-mode .management-section,
+    body.dark-mode .exam-left-panel,
+    body.dark-mode .info-card,
+    body.dark-mode .summary,
+    body.dark-mode .card {
+        background-color: #1f2937;
+        color: #d8dee9;
+        box-shadow: 0 4px 14px rgba(0,0,0,0.3);
+    }
+    body.dark-mode .exam-right-panel,
+    body.dark-mode .file-hint pre {
+        background-color: #182230;
+        color: #d8dee9;
+        border-color: #334155;
+    }
+    body.dark-mode select,
+    body.dark-mode .blank-input,
+    body.dark-mode .scope-number-input {
+        background-color: #111827;
+        color: #f8fafc;
+        border-color: #475569;
+    }
+    body.dark-mode .shuffle-label,
+    body.dark-mode .file-hint,
+    body.dark-mode .nav-legend,
+    body.dark-mode .footer-hint-text,
+    body.dark-mode .info-card h4 {
+        color: #cbd5e1;
+    }
+    body.dark-mode .checkbox-grid,
+    body.dark-mode .question-scope-panel,
+    body.dark-mode .box {
+        border-color: #334155;
+    }
+    body.dark-mode .option-label {
+        background-color: #111827;
+        border-color: #334155;
+        color: #e5e7eb;
+    }
+    body.dark-mode .option-label:hover {
+        background-color: #172033;
+        border-color: #64748b;
+    }
+    body.dark-mode .option-label.answer-hint-highlight {
+        background-color: #00c853;
+        border-color: #69f0ae;
+        color: #03130a;
+        box-shadow: 0 0 0 2px rgba(105, 240, 174, 0.55), 0 0 18px rgba(0, 200, 83, 0.72);
+    }
+    body.dark-mode .nav-btn.unanswered {
+        background-color: #111827;
+        color: #e5e7eb;
+        border-color: #475569;
+    }
+    body.dark-mode .btn-trash-delete {
+        background-color: #111827;
+        color: #cbd5e1;
+        border-color: #475569;
+    }
+    body.dark-mode .correct {
+        background-color: #10251a;
+    }
+    body.dark-mode .wrong {
+        background-color: #2a1518;
     }
 
     /* 原管理區塊：新增內部自適應滾動，防範首頁被卡到 */
@@ -135,9 +293,18 @@
     .action-btn:hover { background-color: #2980b9; }
     select { padding: 10px; font-size: 16px; width: 60%; max-width: 400px; border-radius: 5px; border: 1px solid #ccc; margin-right: 10px; }
     
-    /* 範本提示區塊 */
+    /* 範本提示區塊：預設收折，需要時點擊展開 */
     .file-hint { color: #555; font-size: 14px; margin-top: 15px; line-height: 1.6; text-align: left; }
-    .hint-title { margin-bottom: 12px; color: #2c3e50; }
+    .file-hint summary {
+        cursor: pointer;
+        color: #2c3e50;
+        font-weight: 600;
+        list-style-position: outside;
+        user-select: none;
+    }
+    .file-hint summary:hover { color: #2980b9; }
+    .file-hint[open] summary { margin-bottom: 12px; }
+    .hint-title { color: #2c3e50; }
     .hint-item { margin-top: 10px; padding-left: 5px; }
     .file-hint pre {
         background-color: #f8f9fa;
@@ -315,6 +482,12 @@
         background-color: #f39c12;
         color: #fff;
     }
+    /* 答案提示：啟用後點選任一選項，正確選項短暫亮綠兩秒，不參與判分 */
+    .option-label.answer-hint-highlight {
+        background-color: #e8f8ef;
+        border-color: #2ecc71;
+        box-shadow: 0 0 0 2px rgba(46, 204, 113, 0.18);
+    }
 
     /* 螢幕最底部 */
     .exam-footer {
@@ -430,6 +603,64 @@
         height: 16px;
         cursor: pointer;
     }
+    .question-scope-panel {
+        display: grid;
+        grid-template-columns: minmax(170px, 1fr) minmax(160px, 1fr) minmax(230px, 1.35fr);
+        gap: 10px 14px;
+        align-items: end;
+        border-top: 1px dashed #e2e8f0;
+        padding-top: 14px;
+        margin-top: 14px;
+    }
+    .scope-field {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+        font-size: 13px;
+        color: #475569;
+    }
+    .scope-field label,
+    .scope-label {
+        font-weight: 600;
+        color: #334155;
+    }
+    .scope-number-input {
+        height: 34px;
+        border: 1px solid #cbd5e1;
+        border-radius: 6px;
+        padding: 0 10px;
+        box-sizing: border-box;
+        font-size: 14px;
+    }
+    .scope-range-group {
+        display: grid;
+        grid-template-columns: 1fr auto 1fr;
+        gap: 8px;
+        align-items: center;
+    }
+    .scope-range-separator {
+        color: #64748b;
+        font-size: 13px;
+    }
+    .scope-total-hint {
+        grid-column: 1 / -1;
+        color: #64748b;
+        font-size: 12.5px;
+    }
+    body.dark-mode .scope-field,
+    body.dark-mode .scope-total-hint,
+    body.dark-mode .scope-range-separator {
+        color: #cbd5e1;
+    }
+    body.dark-mode .scope-field label,
+    body.dark-mode .scope-label {
+        color: #f8fafc;
+    }
+    @media (max-width: 760px) {
+        .question-scope-panel {
+            grid-template-columns: 1fr;
+        }
+    }
 
     /* 上傳檔案按鈕 */
     .btn-upload-file {
@@ -466,9 +697,19 @@
 
 <div class="exam-header" translate="no">
     <div>練習測驗系統 (Practice Quiz System)</div>
-    
-    <!-- 動態計時器 -->
-    <div class="proctor-status" id="examTimer" style="background-color: #34495e; font-family: monospace; font-size: 15px; letter-spacing: 1px;">作答時間 00:00:00</div>
+
+    <div class="header-tools">
+        <!-- 明暗模式滑動切換器：太陽為正常模式，月亮為深色模式 -->
+        <label class="theme-switch" title="切換正常/深色模式">
+            <span class="theme-icon" aria-hidden="true">☀</span>
+            <input type="checkbox" id="themeModeCheckbox" aria-label="切換深色模式">
+            <span class="theme-slider"></span>
+            <span class="theme-icon" aria-hidden="true">☾</span>
+        </label>
+
+        <!-- 動態計時器 -->
+        <div class="proctor-status" id="examTimer" style="background-color: #34495e; font-family: monospace; font-size: 15px; letter-spacing: 1px;">作答時間 00:00:00</div>
+    </div>
 </div>
 
 <div id="managementSection" class="management-section">
@@ -498,14 +739,44 @@
         <div class="checkbox-grid">
             <label class="shuffle-label"><input type="checkbox" id="shuffleCheckbox"> 打亂題目</label>
             <label class="shuffle-label"><input type="checkbox" id="hideCorrectCheckbox"> 隱藏已答對題目</label>
+            <label class="shuffle-label"><input type="checkbox" id="wrongModeCheckbox"> 錯題模式（只考答錯題）</label>
             <label class="shuffle-label"><input type="checkbox" id="shuffleOptionsCheckbox"> 打亂選項</label>
+            <label class="shuffle-label"><input type="checkbox" id="answerHintCheckbox"> 答案提示</label>
             <label class="shuffle-label"><input type="checkbox" id="showTimerCheckbox"> 隱藏作答計時器</label>
+        </div>
+
+        <!-- 第三層：出題範圍設定，可指定全部、隨機題數或原始題號區間 -->
+        <div class="question-scope-panel">
+            <div class="scope-field">
+                <label for="questionScopeMode">出題範圍</label>
+                <select id="questionScopeMode">
+                    <option value="all">全部題目</option>
+                    <option value="random">隨機指定題數</option>
+                    <option value="range">指定第幾題到第幾題</option>
+                </select>
+            </div>
+
+            <div class="scope-field" id="randomQuestionCountField">
+                <label for="randomQuestionCount">隨機題數</label>
+                <input type="number" id="randomQuestionCount" class="scope-number-input" min="1" placeholder="例如 50">
+            </div>
+
+            <div class="scope-field" id="rangeQuestionField">
+                <div class="scope-label">指定題號範圍</div>
+                <div class="scope-range-group">
+                    <input type="number" id="rangeStartQuestion" class="scope-number-input" min="1" placeholder="起始">
+                    <span class="scope-range-separator">到</span>
+                    <input type="number" id="rangeEndQuestion" class="scope-number-input" min="1" placeholder="結束">
+                </div>
+            </div>
+
+            <div id="questionTotalHint" class="scope-total-hint">目前尚未選擇題庫。</div>
         </div>
     </div>
 
-    <!-- 💡 提示區塊：已將可接受檔案類型整合進來 -->
-    <div class="file-hint">
-        <div class="hint-title">💡 <strong>提示：</strong> 系統會自動分辨是「選擇題」還是「填空題」喔！(支援格式：.json / .csv / .txt)</div>
+    <!-- 💡 提示區塊：預設收折，需要查看格式時再展開 -->
+    <details class="file-hint">
+        <summary class="hint-title">💡 <strong>提示：</strong> 點擊展開格式說明（支援格式：.json / .csv / .txt）</summary>
         
         <div class="hint-item">
             <strong>1. CSV 格式說明 (支援包含引號與逗號的複雜題目)：</strong>
@@ -529,7 +800,7 @@
   } 
 ]</code></pre>
         </div>
-    </div>
+    </details>
 </div>
 
 <div id="quizSection" style="display: none; flex-direction: column;">
@@ -540,6 +811,7 @@
             <div id="summaryBox" class="summary" translate="no">
                 <h1> 測驗結果 </h1>
                 <p class="summary-text" id="statsText"></p>
+                <button id="wrongRetryBtn" class="action-btn" translate="no" style="display: none; background-color: #c0392b;" onclick="startWrongRetryQuiz()">錯題再次測驗</button>
                 <button class="action-btn" translate="no" style="background-color: #e67e22;" onclick="customStartQuiz(); document.getElementById('summaryBox').style.display='none'; document.getElementById('submitBtn').style.display='inline-block';">再次測驗</button>
                 <button class="action-btn" translate="no" style="background-color: #34495e;" onclick="location.reload()">返回首頁</button>
             </div>
@@ -581,10 +853,14 @@
     const QUIZ_SETTINGS_STORAGE_KEY = 'quiz_sys_settings';
     const QUIZ_CORRECT_STORAGE_KEY = 'quiz_sys_correct_questions';
     const QUIZ_METADATA_STORAGE_KEY = 'quiz_sys_metadata';
+    const QUIZ_THEME_STORAGE_KEY = 'quiz_sys_theme';
+    const QUIZ_WRONG_HISTORY_STORAGE_KEY = 'quiz_sys_wrong_history';
     const QUIZ_RESERVED_STORAGE_KEYS = new Set([
         QUIZ_SETTINGS_STORAGE_KEY,
         QUIZ_CORRECT_STORAGE_KEY,
-        QUIZ_METADATA_STORAGE_KEY
+        QUIZ_METADATA_STORAGE_KEY,
+        QUIZ_THEME_STORAGE_KEY,
+        QUIZ_WRONG_HISTORY_STORAGE_KEY
     ]);
 
     // sourceQuizBank 永遠保存完整原始題庫；quizBank 則是套用設定後的本次測驗清單。
@@ -593,22 +869,61 @@
     let markedQuestions = {}; // 用於追蹤哪些題號被 Mark
     let examTimerInterval = null; // 用於儲存定時器物件
     let totalSeconds = 0;         // 累計作答秒數
+    let answerHintTimers = {};    // 答案提示倒數器，避免連續點選時殘留提示樣式
+    let currentQuizStorageKey = ''; // 本次測驗所屬題庫 key，用於錯題歷史分題庫保存
+    let currentSessionFirstAttempts = new Set(); // 本次測驗中已記錄過第一次選項點擊的題目 id
+    let currentSessionFirstWrongIds = new Set(); // 本次測驗第一次點選就答錯的選擇題 id
+    let lastWrongRetryQuestions = []; // 完成作答後保留本次可再次測驗的錯題清單
     let correctlyAnsweredQuestions = new Set(JSON.parse(localStorage.getItem(QUIZ_CORRECT_STORAGE_KEY) || '[]'));
 
     window.onload = function() {
+        loadThemeMode();
         updateHistoryDropdown();
         loadQuizSettings();
         bindSettingsControls();
+        bindThemeModeControl();
         updateTimerVisibility();
     };
+
+    // 明暗模式會獨立保存，不跟測驗 checkbox 混在一起。
+    function applyThemeMode(mode) {
+        const isDark = mode === 'dark';
+        document.body.classList.toggle('dark-mode', isDark);
+
+        const themeToggle = document.getElementById('themeModeCheckbox');
+        if (themeToggle) {
+            themeToggle.checked = isDark;
+        }
+    }
+
+    function loadThemeMode() {
+        applyThemeMode(localStorage.getItem(QUIZ_THEME_STORAGE_KEY) || 'light');
+    }
+
+    function bindThemeModeControl() {
+        const themeToggle = document.getElementById('themeModeCheckbox');
+        if (!themeToggle) return;
+
+        themeToggle.addEventListener('change', function() {
+            const mode = themeToggle.checked ? 'dark' : 'light';
+            localStorage.setItem(QUIZ_THEME_STORAGE_KEY, mode);
+            applyThemeMode(mode);
+        });
+    }
 
     // 集中讀取所有測驗設定，後續新增模式時優先擴充這個物件。
     function getQuizSettings() {
         return {
             shuffleQuestions: document.getElementById('shuffleCheckbox')?.checked || false,
             hideCorrect: document.getElementById('hideCorrectCheckbox')?.checked || false,
+            wrongMode: document.getElementById('wrongModeCheckbox')?.checked || false,
             shuffleOptions: document.getElementById('shuffleOptionsCheckbox')?.checked || false,
-            hideTimer: document.getElementById('showTimerCheckbox')?.checked || false
+            answerHint: document.getElementById('answerHintCheckbox')?.checked || false,
+            hideTimer: document.getElementById('showTimerCheckbox')?.checked || false,
+            questionScopeMode: document.getElementById('questionScopeMode')?.value || 'all',
+            randomQuestionCount: parseInt(document.getElementById('randomQuestionCount')?.value, 10) || 0,
+            rangeStartQuestion: parseInt(document.getElementById('rangeStartQuestion')?.value, 10) || 0,
+            rangeEndQuestion: parseInt(document.getElementById('rangeEndQuestion')?.value, 10) || 0
         };
     }
 
@@ -618,7 +933,9 @@
         const checkboxMap = {
             shuffleQuestions: 'shuffleCheckbox',
             hideCorrect: 'hideCorrectCheckbox',
+            wrongMode: 'wrongModeCheckbox',
             shuffleOptions: 'shuffleOptionsCheckbox',
+            answerHint: 'answerHintCheckbox',
             hideTimer: 'showTimerCheckbox'
         };
 
@@ -626,6 +943,22 @@
             const checkbox = document.getElementById(checkboxId);
             if (checkbox && typeof saved[settingKey] === 'boolean') {
                 checkbox.checked = saved[settingKey];
+            }
+        });
+
+        const scopeMode = document.getElementById('questionScopeMode');
+        if (scopeMode && typeof saved.questionScopeMode === 'string') {
+            scopeMode.value = saved.questionScopeMode;
+        }
+
+        [
+            ['randomQuestionCount', saved.randomQuestionCount],
+            ['rangeStartQuestion', saved.rangeStartQuestion],
+            ['rangeEndQuestion', saved.rangeEndQuestion]
+        ].forEach(([id, value]) => {
+            const input = document.getElementById(id);
+            if (input && Number.isFinite(Number(value)) && Number(value) > 0) {
+                input.value = Number(value);
             }
         });
     }
@@ -636,7 +969,7 @@
     }
 
     function bindSettingsControls() {
-        ['shuffleCheckbox', 'hideCorrectCheckbox', 'shuffleOptionsCheckbox', 'showTimerCheckbox'].forEach(id => {
+        ['shuffleCheckbox', 'hideCorrectCheckbox', 'wrongModeCheckbox', 'shuffleOptionsCheckbox', 'answerHintCheckbox', 'showTimerCheckbox'].forEach(id => {
             const checkbox = document.getElementById(id);
             if (!checkbox) return;
 
@@ -647,6 +980,25 @@
                 }
             });
         });
+
+        ['questionScopeMode', 'randomQuestionCount', 'rangeStartQuestion', 'rangeEndQuestion'].forEach(id => {
+            const control = document.getElementById(id);
+            if (!control) return;
+
+            const eventName = control.tagName === 'SELECT' ? 'change' : 'input';
+            control.addEventListener(eventName, function() {
+                saveQuizSettings();
+                updateQuestionScopeControls();
+            });
+        });
+
+        const historySelect = document.getElementById('historySelect');
+        if (historySelect) {
+            historySelect.addEventListener('change', updateQuestionScopeHint);
+        }
+
+        updateQuestionScopeControls();
+        updateQuestionScopeHint();
     }
 
     // 隱藏計時器時保留 DOM 佔位，避免頂部 header 高度或左右排版跳動。
@@ -656,6 +1008,49 @@
         const shouldHide = getQuizSettings().hideTimer;
         timer.style.visibility = shouldHide ? 'hidden' : 'visible';
         timer.style.opacity = shouldHide ? '0' : '1';
+    }
+
+    function getSelectedQuizTotal() {
+        const select = document.getElementById('historySelect');
+        if (!select || !select.value) return 0;
+
+        try {
+            const data = JSON.parse(localStorage.getItem(select.value) || '[]');
+            return Array.isArray(data) ? data.length : 0;
+        } catch (e) {
+            return 0;
+        }
+    }
+
+    function updateQuestionScopeHint() {
+        const total = getSelectedQuizTotal();
+        const hint = document.getElementById('questionTotalHint');
+        if (hint) {
+            hint.textContent = total > 0
+                ? `目前選擇的題庫共有 ${total} 題。指定範圍請輸入 1 到 ${total} 之間的題號。`
+                : '目前尚未選擇題庫。';
+        }
+
+        ['randomQuestionCount', 'rangeStartQuestion', 'rangeEndQuestion'].forEach(id => {
+            const input = document.getElementById(id);
+            if (input && total > 0) input.max = String(total);
+        });
+    }
+
+    function updateQuestionScopeControls() {
+        const mode = document.getElementById('questionScopeMode')?.value || 'all';
+        const randomInput = document.getElementById('randomQuestionCount');
+        const startInput = document.getElementById('rangeStartQuestion');
+        const endInput = document.getElementById('rangeEndQuestion');
+        const randomField = document.getElementById('randomQuestionCountField');
+        const rangeField = document.getElementById('rangeQuestionField');
+
+        if (randomField) randomField.style.display = mode === 'random' ? 'flex' : 'none';
+        if (rangeField) rangeField.style.display = mode === 'range' ? 'flex' : 'none';
+        if (randomInput) randomInput.disabled = mode !== 'random';
+        if (startInput) startInput.disabled = mode !== 'range';
+        if (endInput) endInput.disabled = mode !== 'range';
+        updateQuestionScopeHint();
     }
 
     function shuffleArray(list) {
@@ -681,24 +1076,120 @@
         return hashString(`${item.q || ''}|${JSON.stringify(item.opts || [])}|${JSON.stringify(item.ans || '')}`);
     }
 
-    function normalizeQuestion(item) {
-        return { ...item, id: getQuestionId(item) };
+    function normalizeQuestion(item, sourceIndex) {
+        return { ...item, id: getQuestionId(item), sourceIndex };
     }
 
     // 載入或上傳題庫後統一進入這裡，為每題補穩定 id，方便統計與模式篩選。
     function setSourceQuizBank(list) {
-        sourceQuizBank = (Array.isArray(list) ? list : []).map(normalizeQuestion);
+        sourceQuizBank = (Array.isArray(list) ? list : []).map((item, index) => normalizeQuestion(item, index));
         quizBank = [...sourceQuizBank];
     }
 
-    // 依目前設定建立「本次測驗清單」；未來錯題模式、標記模式、指定題數也應接在這裡。
+    function getWrongHistoryStore() {
+        return JSON.parse(localStorage.getItem(QUIZ_WRONG_HISTORY_STORAGE_KEY) || '{}');
+    }
+
+    function saveWrongHistoryStore(store) {
+        localStorage.setItem(QUIZ_WRONG_HISTORY_STORAGE_KEY, JSON.stringify(store));
+    }
+
+    // 錯題模式取該題庫最近五次完成測驗，只要曾經錯過一次就納入本次題目池。
+    function getRecentWrongQuestionIds(quizStorageKey) {
+        const store = getWrongHistoryStore();
+        const recentRecords = (store[quizStorageKey] || []).slice(0, 5);
+        const wrongIds = new Set();
+
+        recentRecords.forEach(record => {
+            (record.wrongIds || []).forEach(id => wrongIds.add(String(id)));
+        });
+
+        return wrongIds;
+    }
+
+    // 完成測驗後寫入本次錯題，最多保留每個題庫最近五次完整提交紀錄。
+    function recordWrongQuestionHistory(quizStorageKey, wrongIds) {
+        if (!quizStorageKey) return;
+
+        const store = getWrongHistoryStore();
+        const records = store[quizStorageKey] || [];
+        records.unshift({
+            completedAt: Date.now(),
+            wrongIds: [...new Set(wrongIds.map(id => String(id)))]
+        });
+        store[quizStorageKey] = records.slice(0, 5);
+        saveWrongHistoryStore(store);
+    }
+
+    function resetSessionMistakeTracking() {
+        currentSessionFirstAttempts = new Set();
+        currentSessionFirstWrongIds = new Set();
+        lastWrongRetryQuestions = [];
+
+        const wrongRetryBtn = document.getElementById('wrongRetryBtn');
+        if (wrongRetryBtn) wrongRetryBtn.style.display = 'none';
+    }
+
+    // 只記錄選擇題的第一次點選；第一次選錯就納入本次「錯題再次測驗」。
+    function recordFirstChoiceAttempt(item, selectedValue) {
+        const questionId = getQuestionId(item);
+        if (currentSessionFirstAttempts.has(questionId)) return;
+
+        currentSessionFirstAttempts.add(questionId);
+        if (String(selectedValue).trim() !== String(item.ans).trim()) {
+            currentSessionFirstWrongIds.add(questionId);
+        }
+    }
+
+    function restoreSubmitButton() {
+        const footerRightDiv = document.querySelector('.exam-footer > div:last-child');
+        if (footerRightDiv) {
+            footerRightDiv.innerHTML = `
+                <button type="button" class="submit-btn" id="submitBtn" onclick="checkAnswers()">
+                    完成作答 (Submit Exam)
+                </button>
+            `;
+        }
+    }
+
+    function applyQuestionScope(pool, settings) {
+        const total = sourceQuizBank.length;
+
+        if (settings.questionScopeMode === 'random') {
+            if (!settings.randomQuestionCount || settings.randomQuestionCount < 1) return [];
+            const count = Math.min(settings.randomQuestionCount, pool.length);
+            return shuffleArray(pool).slice(0, count);
+        }
+
+        if (settings.questionScopeMode === 'range') {
+            if (!settings.rangeStartQuestion || !settings.rangeEndQuestion) return [];
+
+            const start = Math.max(1, Math.min(settings.rangeStartQuestion, total));
+            const end = Math.max(1, Math.min(settings.rangeEndQuestion, total));
+            const startIndex = Math.min(start, end) - 1;
+            const endIndex = Math.max(start, end) - 1;
+
+            return pool.filter(item => item.sourceIndex >= startIndex && item.sourceIndex <= endIndex);
+        }
+
+        return pool;
+    }
+
+    // 依目前設定建立「本次測驗清單」；未來標記模式也應接在這裡。
     function buildQuizSession() {
         const settings = getQuizSettings();
         let pool = [...sourceQuizBank];
 
+        if (settings.wrongMode) {
+            const wrongIds = getRecentWrongQuestionIds(currentQuizStorageKey);
+            pool = pool.filter(item => wrongIds.has(getQuestionId(item)));
+        }
+
         if (settings.hideCorrect) {
             pool = pool.filter(item => !correctlyAnsweredQuestions.has(getQuestionId(item)));
         }
+
+        pool = applyQuestionScope(pool, settings);
 
         if (settings.shuffleQuestions) {
             pool = shuffleArray(pool);
@@ -804,9 +1295,14 @@
                 let metaData = JSON.parse(localStorage.getItem(QUIZ_METADATA_STORAGE_KEY) || '{}');
                 delete metaData[selectedKey];
                 localStorage.setItem(QUIZ_METADATA_STORAGE_KEY, JSON.stringify(metaData));
+
+                const wrongHistoryStore = getWrongHistoryStore();
+                delete wrongHistoryStore[selectedKey];
+                saveWrongHistoryStore(wrongHistoryStore);
                 
                 // 更新下拉選單介面
                 updateHistoryDropdown();
+                updateQuestionScopeHint();
                 alert("紀錄已成功刪除。");
             }
         }
@@ -933,6 +1429,7 @@
                     if (select) {
                         select.value = saveKey;
                     }
+                    updateQuestionScopeHint();
                     alert(`檔案「${fileName}」上傳並解析成功！共 ${quizBank.length} 題，請選取並開始測驗。`);
                 } else {
                     alert("解析出來的題庫內容為空，請檢查格式。");
@@ -977,6 +1474,7 @@
             return;
         }
 
+        currentQuizStorageKey = select.value;
         setSourceQuizBank(JSON.parse(data));
         if(!sourceQuizBank || sourceQuizBank.length === 0) {
             alert("目前選擇的題庫沒有可用題目，請檢查題庫內容。");
@@ -985,27 +1483,101 @@
 
         quizBank = buildQuizSession();
         if (quizBank.length === 0) {
-            alert("目前設定下沒有可作答的題目。請取消『隱藏已答對題目』或更換題庫。");
+            const settings = getQuizSettings();
+            const message = settings.wrongMode
+                ? "錯題模式目前沒有可作答的題目。請先完成至少一次測驗並產生錯題，或先取消『錯題模式』。"
+                : settings.questionScopeMode === 'random'
+                    ? "隨機題數尚未正確設定，請輸入至少 1 題。"
+                : settings.questionScopeMode === 'range'
+                    ? "指定題號範圍目前沒有可作答的題目，請確認起始與結束題號，或檢查是否被其他模式篩掉。"
+                : "目前設定下沒有可作答的題目。請取消『隱藏已答對題目』或更換題庫。";
+            alert(message);
             return;
         }
 
         document.getElementById('managementSection').style.display = 'none';
         document.getElementById('quizSection').style.display = 'flex'; // 修正為 flex 佈局
         markedQuestions = {};
+        resetSessionMistakeTracking();
 
         renderQuizQuestions();
         buildNavigationGrid();
         startExamTimer();
 
 	// 還原 [完成作答] 按鈕
-        const footerRightDiv = document.querySelector('.exam-footer > div:last-child');
-        if (footerRightDiv) {
-            footerRightDiv.innerHTML = `
-                <button type="button" class="submit-btn" id="submitBtn" onclick="checkAnswers()">
-                    完成作答 (Submit Exam)
-                </button>
-            `;
+        restoreSubmitButton();
+    }
+
+    function startWrongRetryQuiz() {
+        if (!lastWrongRetryQuestions || lastWrongRetryQuestions.length === 0) {
+            alert("本次測驗沒有可再次測驗的錯題。");
+            return;
         }
+
+        quizBank = [...lastWrongRetryQuestions];
+        markedQuestions = {};
+        resetSessionMistakeTracking();
+
+        const summaryBox = document.getElementById('summaryBox');
+        if (summaryBox) summaryBox.style.display = 'none';
+
+        document.getElementById('managementSection').style.display = 'none';
+        document.getElementById('quizSection').style.display = 'flex';
+
+        renderQuizQuestions();
+        buildNavigationGrid();
+        startExamTimer();
+        restoreSubmitButton();
+
+        const leftPanel = document.querySelector('.exam-left-panel');
+        if (leftPanel) leftPanel.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // 統一產生正確答案顯示文字，交卷後錯題提示使用同一套格式。
+    function getDisplayAnswer(item) {
+        let showAns = String(item.ans);
+        let targetOptIndex = parseInt(item.ans) - 1;
+
+        if (item.opts && item.opts[targetOptIndex]) {
+            showAns = item.opts[targetOptIndex];
+        } else if (Array.isArray(item.ans)) {
+            showAns = item.ans[item.ans.length - 1];
+        }
+
+        return showAns;
+    }
+
+    // 答案提示模式：使用者點選任一選項後，正確選項亮綠兩秒再恢復。
+    function showAnswerHint(index, correctAnswer) {
+        if (!getQuizSettings().answerHint) return;
+
+        const inputs = Array.from(document.getElementsByName(`q_${index}`));
+        const correctInput = inputs.find(input => input.value === String(correctAnswer).trim());
+        if (!correctInput) return;
+
+        const correctLabel = correctInput.closest('.option-label');
+        if (!correctLabel) return;
+
+        if (answerHintTimers[index]) {
+            clearTimeout(answerHintTimers[index]);
+            correctLabel.classList.remove('answer-hint-highlight');
+        }
+
+        correctLabel.classList.add('answer-hint-highlight');
+        answerHintTimers[index] = setTimeout(function() {
+            correctLabel.classList.remove('answer-hint-highlight');
+            delete answerHintTimers[index];
+        }, 2000);
+    }
+
+    // 選完選擇題後延遲 0.5 秒自動前往下一題；最後一題沒有下一題時不動作。
+    function scrollToNextQuestion(index) {
+        const nextCard = document.getElementById(`question_card_${index + 1}`);
+        if (!nextCard) return;
+
+        setTimeout(function() {
+            nextCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 500);
     }
 
     // 動態渲染題目卡片 (優化：選項 Value 設為 1, 2, 3, 4 正確對應答案)
@@ -1023,6 +1595,7 @@
             markBtn.textContent = '★ Mark 標記';
             markBtn.onclick = function() { toggleMark(index, markBtn); };
             card.appendChild(markBtn);
+
 
             // 智慧文字修復
             let fixedQuestionText = item.q;
@@ -1058,7 +1631,17 @@
                     radio.type = 'radio';
                     radio.name = `q_${index}`;
                     radio.value = String(option.originalIndex + 1);
-                    radio.onchange = function() { updateNavStatus(index, 'answered'); };
+                    radio.onchange = function() {
+                        recordFirstChoiceAttempt(item, radio.value);
+                        updateNavStatus(index, 'answered');
+                        showAnswerHint(index, item.ans);
+
+                        const answerHintEnabled = getQuizSettings().answerHint;
+                        const isCorrectChoice = radio.value === String(item.ans).trim();
+                        if (answerHintEnabled && !isCorrectChoice) return;
+
+                        scrollToNextQuestion(index);
+                    };
                     
 		    // 將文字用 span 包裹，給翻譯軟體一個乾淨的對象，徹底解決亂換行問題
                     label.appendChild(radio);
@@ -1159,6 +1742,29 @@
         return false;
     }
 
+    function getLastAnsweredQuestionIndex() {
+        let lastAnsweredIndex = -1;
+        quizBank.forEach((_, index) => {
+            if (checkQuestionHasAnswer(index)) {
+                lastAnsweredIndex = index;
+            }
+        });
+        return lastAnsweredIndex;
+    }
+
+    // 本次錯題重測：第一次點錯的選擇題 + 最後已作答題之前被跳過的未答題。
+    function buildWrongRetryQuestions() {
+        const lastAnsweredIndex = getLastAnsweredQuestionIndex();
+
+        return quizBank.filter((item, index) => {
+            const questionId = getQuestionId(item);
+            const isFirstChoiceWrong = currentSessionFirstWrongIds.has(questionId);
+            const isSkippedBeforeLastAnswered = index < lastAnsweredIndex && !checkQuestionHasAnswer(index);
+
+            return isFirstChoiceWrong || isSkippedBeforeLastAnswered;
+        });
+    }
+
 // 核對全體答案 (完美保留原底色，僅追加紅綠外框)
     // 交卷入口：防呆確認、停止計時、鎖定作答、判分、記錄答對題目並渲染統計結果。
     function checkAnswers() {
@@ -1195,6 +1801,7 @@
         if (examTimerInterval) clearInterval(examTimerInterval);
 
         let correctCount = 0;
+        const wrongQuestionIds = [];
         
         quizBank.forEach((item, index) => {
             const card = document.getElementById(`question_card_${index}`);
@@ -1236,24 +1843,18 @@
                 if (navBtn) navBtn.classList.add('nav-correct');
 	    } else {
                 card.className = 'card wrong';
+                wrongQuestionIds.push(getQuestionId(item));
                 
-                let showAns = String(item.ans);
-                let targetOptIndex = parseInt(item.ans) - 1;
-                
-                if (item.opts && item.opts[targetOptIndex]) {
-                    // 1. 如果是選擇題，顯示該選項的完整內容
-                    showAns = item.opts[targetOptIndex]; 
-                } else if (Array.isArray(item.ans)) {
-                    // 2. 如果是簡答題（填空題）且答案是陣列，只撈出最後一個（滿足完美排版的那個答案）
-                    showAns = item.ans[item.ans.length - 1]; 
-                }
-                
+                const showAns = getDisplayAnswer(item);
                 resDiv.innerHTML = `<span class="wrong-ans">✗ 錯誤</span> (正確答案：${showAns})`;
                 
                 // 保留右側面板變紅框的優良傳統
                 if (navBtn) navBtn.classList.add('nav-wrong');
             }
         });
+
+        recordWrongQuestionHistory(currentQuizStorageKey, wrongQuestionIds);
+        lastWrongRetryQuestions = buildWrongRetryQuestions();
 
 	// 計算四捨五入後的正確率（不要小數點）
         const accuracyRate = quizBank.length > 0 ? Math.round((correctCount / quizBank.length) * 100) : 0;
@@ -1262,6 +1863,10 @@
         const statsText = document.getElementById('statsText');
         statsText.innerHTML = `測驗完成！您答對了 ${correctCount} / ${quizBank.length} 題<br>正確率 ${accuracyRate}%`;
         summaryBox.style.display = 'block';
+        const wrongRetryBtn = document.getElementById('wrongRetryBtn');
+        if (wrongRetryBtn) {
+            wrongRetryBtn.style.display = lastWrongRetryQuestions.length > 0 ? 'inline-block' : 'none';
+        }
         summaryBox.scrollIntoView({ behavior: 'smooth' });
 	const submitBtn = document.getElementById('submitBtn');
         if (submitBtn) {
