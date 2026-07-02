@@ -1,4 +1,4 @@
-<!-- 
+﻿<!-- 
 檔案：練習測驗系統 (index.html)
 結構與函數對應說明：
   ├── Head: 設定內建 CSS 樣式與 EC-Council 企業藍全域考場佈局配置
@@ -87,6 +87,9 @@
         padding: 4px 10px;
         border-radius: 4px;
         font-size: 13px;
+        min-width: 150px;
+        text-align: center;
+        box-sizing: border-box;
     }
 
     /* 原管理區塊：新增內部自適應滾動，防範首頁被卡到 */
@@ -472,7 +475,7 @@
             <label class="shuffle-label"><input type="checkbox" id="shuffleCheckbox"> 打亂題目</label>
             <label class="shuffle-label"><input type="checkbox" id="hideCorrectCheckbox"> 隱藏已答對題目</label>
             <label class="shuffle-label"><input type="checkbox" id="shuffleOptionsCheckbox"> 打亂選項</label>
-            <label class="shuffle-label"><input type="checkbox" id="showTimerCheckbox" checked> 顯示作答計時器</label>
+            <label class="shuffle-label"><input type="checkbox" id="showTimerCheckbox"> 隱藏作答計時器</label>
         </div>
     </div>
 
@@ -549,14 +552,145 @@
 </div>
 
 <script>
+    let sourceQuizBank = [];
     let quizBank = [];
     let markedQuestions = {}; // 用於追蹤哪些題號被 Mark
     let examTimerInterval = null; // 用於儲存定時器物件
     let totalSeconds = 0;         // 累計作答秒數
+    let correctlyAnsweredQuestions = new Set(JSON.parse(localStorage.getItem('quiz_sys_correct_questions') || '[]'));
+    const QUIZ_SETTINGS_STORAGE_KEY = 'quiz_sys_settings';
 
     window.onload = function() {
         updateHistoryDropdown();
+        loadQuizSettings();
+        bindSettingsControls();
+        updateTimerVisibility();
     };
+
+    function getQuizSettings() {
+        return {
+            shuffleQuestions: document.getElementById('shuffleCheckbox')?.checked || false,
+            hideCorrect: document.getElementById('hideCorrectCheckbox')?.checked || false,
+            shuffleOptions: document.getElementById('shuffleOptionsCheckbox')?.checked || false,
+            hideTimer: document.getElementById('showTimerCheckbox')?.checked || false
+        };
+    }
+
+    function loadQuizSettings() {
+        const saved = JSON.parse(localStorage.getItem(QUIZ_SETTINGS_STORAGE_KEY) || '{}');
+        const checkboxMap = {
+            shuffleQuestions: 'shuffleCheckbox',
+            hideCorrect: 'hideCorrectCheckbox',
+            shuffleOptions: 'shuffleOptionsCheckbox',
+            hideTimer: 'showTimerCheckbox'
+        };
+
+        Object.entries(checkboxMap).forEach(([settingKey, checkboxId]) => {
+            const checkbox = document.getElementById(checkboxId);
+            if (checkbox && typeof saved[settingKey] === 'boolean') {
+                checkbox.checked = saved[settingKey];
+            }
+        });
+    }
+
+    function saveQuizSettings() {
+        localStorage.setItem(QUIZ_SETTINGS_STORAGE_KEY, JSON.stringify(getQuizSettings()));
+    }
+
+    function bindSettingsControls() {
+        ['shuffleCheckbox', 'hideCorrectCheckbox', 'shuffleOptionsCheckbox', 'showTimerCheckbox'].forEach(id => {
+            const checkbox = document.getElementById(id);
+            if (!checkbox) return;
+
+            checkbox.addEventListener('change', function() {
+                saveQuizSettings();
+                if (id === 'showTimerCheckbox') {
+                    updateTimerVisibility();
+                }
+            });
+        });
+    }
+
+    function updateTimerVisibility() {
+        const timer = document.getElementById('examTimer');
+        if (!timer) return;
+        const shouldHide = getQuizSettings().hideTimer;
+        timer.style.visibility = shouldHide ? 'hidden' : 'visible';
+        timer.style.opacity = shouldHide ? '0' : '1';
+    }
+
+    function shuffleArray(list) {
+        const result = [...list];
+        for (let i = result.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [result[i], result[j]] = [result[j], result[i]];
+        }
+        return result;
+    }
+
+    function hashString(text) {
+        let hash = 2166136261;
+        for (let i = 0; i < text.length; i++) {
+            hash ^= text.charCodeAt(i);
+            hash = Math.imul(hash, 16777619);
+        }
+        return (hash >>> 0).toString(36);
+    }
+
+    function getQuestionId(item) {
+        if (item.id) return String(item.id);
+        return hashString(`${item.q || ''}|${JSON.stringify(item.opts || [])}|${JSON.stringify(item.ans || '')}`);
+    }
+
+    function normalizeQuestion(item) {
+        return { ...item, id: getQuestionId(item) };
+    }
+
+    function setSourceQuizBank(list) {
+        sourceQuizBank = (Array.isArray(list) ? list : []).map(normalizeQuestion);
+        quizBank = [...sourceQuizBank];
+    }
+
+    function buildQuizSession() {
+        const settings = getQuizSettings();
+        let pool = [...sourceQuizBank];
+
+        if (settings.hideCorrect) {
+            pool = pool.filter(item => !correctlyAnsweredQuestions.has(getQuestionId(item)));
+        }
+
+        if (settings.shuffleQuestions) {
+            pool = shuffleArray(pool);
+        }
+
+        return pool;
+    }
+
+    function recordCorrectAnswer(item) {
+        correctlyAnsweredQuestions.add(getQuestionId(item));
+        localStorage.setItem('quiz_sys_correct_questions', JSON.stringify([...correctlyAnsweredQuestions]));
+    }
+
+    function resetExamTimer() {
+        if (examTimerInterval) clearInterval(examTimerInterval);
+        examTimerInterval = null;
+        totalSeconds = 0;
+        const timer = document.getElementById('examTimer');
+        if (timer) timer.textContent = "作答時間 00:00:00";
+        updateTimerVisibility();
+    }
+
+    function startExamTimer() {
+        resetExamTimer();
+        examTimerInterval = setInterval(function() {
+            totalSeconds++;
+            let hrs = String(Math.floor(totalSeconds / 3600)).padStart(2, '0');
+            let mins = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0');
+            let secs = String(totalSeconds % 60).padStart(2, '0');
+            const timer = document.getElementById('examTimer');
+            if (timer) timer.textContent = `作答時間 ${hrs}:${mins}:${secs}`;
+        }, 1000);
+    }
 
     // 智慧過濾與修復文字格式的關鍵邏輯
     function cleanAndParsePythonFormat(rawText) {
@@ -734,12 +868,12 @@
             try {
                 const text = e.target.result;
                 if(fileName.endsWith('.json')) {
-                    quizBank = cleanAndParsePythonFormat(text);
+                    setSourceQuizBank(cleanAndParsePythonFormat(text));
                 } else if(fileName.endsWith('.csv') || fileName.endsWith('.txt')) {
                     if(text.trim().startsWith('[')) {
-                        quizBank = cleanAndParsePythonFormat(text);
+                        setSourceQuizBank(cleanAndParsePythonFormat(text));
                     } else {
-                        quizBank = parseCSV(text);
+                        setSourceQuizBank(parseCSV(text));
                     }
                 }
                 
@@ -778,7 +912,7 @@
         }
         const data = localStorage.getItem(selectedKey);
         if(data) {
-            quizBank = JSON.parse(data);
+            setSourceQuizBank(JSON.parse(data));
             customStartQuiz();
         } else {
             alert("找不到該題庫快取資料。");
@@ -788,16 +922,27 @@
     // 開考流程與初始化控制面板
     function customStartQuiz() {
         const select = document.getElementById('historySelect');
-        if(select && select.value && quizBank.length === 0) {
-            const data = localStorage.getItem(select.value);
-            if(data) quizBank = JSON.parse(data);
+        if(!select || !select.value) {
+            alert("目前尚未選擇任何題庫，請先從下拉選單選擇題庫或上傳檔案。");
+            return;
         }
 
-        if(!quizBank || quizBank.length === 0) {
-            quizBank = [
-                { q: "這是模擬選擇題範例：哪一個是預設的加密網頁傳传输協定？", opts: ["1. HTTP", "2. HTTPS", "3. FTP", "4. SMTP"], ans: "2" },
-                { q: "這是模擬簡答題範例：請輸入網路安全 (Cybersecurity) 的英文首字母簡稱", ans: ["CS", "cs"] }
-            ];
+        const data = localStorage.getItem(select.value);
+        if(!data) {
+            alert("找不到該題庫快取資料，請重新選擇或重新上傳題庫。");
+            return;
+        }
+
+        setSourceQuizBank(JSON.parse(data));
+        if(!sourceQuizBank || sourceQuizBank.length === 0) {
+            alert("目前選擇的題庫沒有可用題目，請檢查題庫內容。");
+            return;
+        }
+
+        quizBank = buildQuizSession();
+        if (quizBank.length === 0) {
+            alert("目前設定下沒有可作答的題目。請取消『隱藏已答對題目』或更換題庫。");
+            return;
         }
 
         document.getElementById('managementSection').style.display = 'none';
@@ -806,19 +951,7 @@
 
         renderQuizQuestions();
         buildNavigationGrid();
-	
-	// 點擊開始測驗時，重置並啟動秒錶計時
-        if (examTimerInterval) clearInterval(examTimerInterval);
-        totalSeconds = 0;
-        document.getElementById('examTimer').textContent = "作答時間 00:00:00";
-        
-        examTimerInterval = setInterval(function() {
-            totalSeconds++;
-            let hrs = String(Math.floor(totalSeconds / 3600)).padStart(2, '0');
-            let mins = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0');
-            let secs = String(totalSeconds % 60).padStart(2, '0');
-            document.getElementById('examTimer').textContent = `作答時間 ${hrs}:${mins}:${secs}`;
-        }, 1000);
+        startExamTimer();
 
 	// 還原 [完成作答] 按鈕
         const footerRightDiv = document.querySelector('.exam-footer > div:last-child');
@@ -863,14 +996,23 @@
                 const optsGroup = document.createElement('div');
                 optsGroup.className = 'options-group';
                 
-                item.opts.forEach((opt, optIndex) => {
+                let optionsToRender = item.opts.map((opt, optIndex) => ({
+                    text: opt,
+                    originalIndex: optIndex
+                }));
+
+                if (getQuizSettings().shuffleOptions) {
+                    optionsToRender = shuffleArray(optionsToRender);
+                }
+
+                optionsToRender.forEach(option => {
                     const label = document.createElement('label');
                     label.className = 'option-label';
                     
                     const radio = document.createElement('input');
                     radio.type = 'radio';
                     radio.name = `q_${index}`;
-                    radio.value = String(optIndex + 1); // 修正：正確綁定為數字 "1", "2", "3", "4"
+                    radio.value = String(option.originalIndex + 1);
                     radio.onchange = function() { updateNavStatus(index, 'answered'); };
                     
 		    // 將文字用 span 包裹，給翻譯軟體一個乾淨的對象，徹底解決亂換行問題
@@ -878,7 +1020,7 @@
                     
                     const optTextSpan = document.createElement('span');
                     optTextSpan.className = 'opt-text';
-                    optTextSpan.textContent = ' ' + opt;
+                    optTextSpan.textContent = ' ' + option.text;
                     label.appendChild(optTextSpan);
                     
                     optsGroup.appendChild(label);
@@ -1040,6 +1182,7 @@
             resDiv.style.display = 'block';
             if (isCorrect) {
                 correctCount++;
+                recordCorrectAnswer(item);
                 card.className = 'card correct';
                 resDiv.innerHTML = `<span class="correct-ans">✓ 正確</span>`;
                 
