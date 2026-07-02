@@ -1,13 +1,13 @@
 ﻿<!-- 
-檔案：練習測驗系統 (quiz_v10.html)
+檔案：練習測驗系統 (quiz_v11.html)
 結構與函數對應說明：
   ├── Head: 設定內建 CSS 樣式與 EC-Council 企業藍全域考場佈局配置
   │
   ├── Body (UI 畫面)
-  │     ├── .exam-header         - 頂部導覽列：系統名稱、明暗模式切換器與作答計時器 (#examTimer)
-  │     │                         計時器可即時隱藏，但保留佔位避免頂部高度跳動
+  │     ├── .exam-header         - 動態頂部導覽列：系統名稱、明暗模式切換器與作答計時器 (#examTimer)
+  │     │                         往下捲動時收起，往上捲動或滑鼠靠近頂部時顯示；計時器可即時隱藏且保留佔位
   │     │
-  │     ├── #managementSection   - 管理區塊（首頁面板，具備獨立自適應滾動）
+  │     ├── #managementSection   - 管理區塊（首頁面板，跟隨網頁本身捲動）
   │     │     ├── .history-card  - 歷史紀錄卡片
   │     │     │     ├── .history-main-row - 題庫選單、上傳/刪除題庫 icon、開始測驗與學習統計按鈕；內建 EDRP 題庫固定顯示
   │     │     │     ├── .checkbox-grid    - 多功能設定區：打亂題目、隱藏已答對題目、錯題模式、打亂選項、答案提示、隱藏作答計時器
@@ -22,7 +22,7 @@
   │     │           ├── .exam-left-panel  - 左側題目區：結果結算區 (#summaryBox) 與動態題目容器 (#quizContainer)
   │     │           └── .exam-right-panel - 右側狀態面板：題目跳轉網格 (#examNavGrid) 與狀態圖例說明
   │     │
-  │     ├── .exam-footer         - 固定釘底導覽列：作答提示與完成作答提交按鈕 (#submitBtn)
+  │     ├── .exam-footer         - 動態底部導覽列：作答提示與完成作答提交按鈕 (#submitBtn)，跟隨 header 顯示/收起
   │     └── Responsive Layout    - 820px 以下自動切換手機模式：首頁單欄、測驗區上下堆疊、題號面板自適應
   │
   └── Script (邏輯控制)
@@ -110,6 +110,12 @@
         height: 100vh;     /* 鎖死在螢幕高度 */
         overflow: hidden;  /* 關鍵：拔除最外層的滾輪 */
     }
+    body.home-active {
+        min-height: 100vh;
+        height: auto;
+        overflow-y: auto;
+        overflow-x: hidden;
+    }
     body,
     .exam-header,
     .management-section,
@@ -127,6 +133,9 @@
     
     /* 頂部導覽列 */
     .exam-header {
+        position: sticky;
+        top: 0;
+        z-index: 10020;
         background-color: #1a252f;
         color: #ffffff;
         padding: 12px 24px;
@@ -137,6 +146,25 @@
         font-size: 18px;
         font-weight: bold;
         flex-shrink: 0;   /* 防止被擠壓 */
+        max-height: 120px;
+        overflow: hidden;
+        opacity: 1;
+        transform: translateY(0);
+        transition: max-height 0.22s ease, padding 0.22s ease, opacity 0.18s ease, transform 0.22s ease, background-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+    }
+    body:not(.home-active).chrome-hidden .exam-header {
+        max-height: 0;
+        padding-top: 0;
+        padding-bottom: 0;
+        opacity: 0;
+        box-shadow: none;
+        pointer-events: none;
+    }
+
+    body.chrome-hidden .exam-header {
+        transform: translateY(-110%);
+        box-shadow: none;
+        pointer-events: none;
     }
     .header-tools {
         display: flex;
@@ -327,8 +355,6 @@
         margin: 20px auto; 
         max-width: 800px;
         border-top: 5px solid #2ecc71; 
-        max-height: calc(100vh - 120px); /* 防範首頁內容太多時塞爆 */
-        overflow-y: auto;                 /* 首頁獨立滾動 */
     }
     .box { margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px dashed #eee; }
     .box:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
@@ -610,6 +636,11 @@
         width: 100vw;      /* 寬度佔滿全螢幕 */
         box-sizing: border-box; /* 避免寬度爆出去 */
         z-index: 9999;     /* 確保永遠在最上層 */
+        transform: translateY(0);
+        transition: transform 0.22s ease, background-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+    }
+    body.chrome-hidden .exam-footer {
+        transform: translateY(110%);
     }
     .footer-hint-text {
         color: #95a5a6;
@@ -630,6 +661,250 @@
     .result-text { font-weight: bold; margin-top: 10px; display: none; line-height: 1.5; }
     .correct-ans { color: green; }
     .wrong-ans { color: red; }
+
+    .home-matrix-canvas {
+        position: fixed;
+        inset: 0;
+        width: 100vw;
+        height: 100vh;
+        background: radial-gradient(circle at 18% 8%, rgba(46, 204, 113, 0.08), transparent 30%),
+                    linear-gradient(135deg, #eef2f7 0%, #e3f0e9 48%, #ddeaf6 100%);
+        z-index: 0;
+        pointer-events: none;
+    }
+
+    body.home-active {
+        background: #eef2f7;
+    }
+
+    body.home-active .exam-header {
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(241, 245, 249, 0.9));
+        color: #0f172a;
+        border-bottom: 1px solid rgba(15, 23, 42, 0.12);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.75), 0 2px 8px rgba(15, 23, 42, 0.08);
+    }
+
+    body.home-active #examTimer {
+        background-color: rgba(236, 253, 245, 0.9) !important;
+        color: #047857;
+        border: 1px solid rgba(16, 185, 129, 0.28);
+        box-shadow: 0 8px 20px rgba(16, 185, 129, 0.12);
+    }
+
+    body.home-active .management-section {
+        position: relative;
+        z-index: 1;
+        width: min(1080px, calc(100vw - 40px));
+        max-width: none;
+        margin: 22px auto;
+        padding: 28px;
+        color: #0f172a;
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.88), rgba(240, 253, 244, 0.82) 46%, rgba(248, 250, 252, 0.92));
+        border: 1px solid rgba(15, 23, 42, 0.12);
+        border-top: 1px solid rgba(22, 163, 74, 0.48);
+        box-shadow: 0 10px 24px rgba(15, 23, 42, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.72), inset 0 0 0 1px rgba(255, 255, 255, 0.36);
+    }
+
+    body.home-active .management-section h1 {
+        margin: 4px 0 6px;
+        color: #0f172a;
+        font-size: 34px;
+        letter-spacing: 0;
+    }
+
+    .home-subtitle {
+        margin: 0 0 22px;
+        text-align: center;
+        color: #047857;
+        font-size: 14px;
+        font-weight: 600;
+    }
+
+    body.home-active .history-card,
+    body.home-active .file-hint {
+        background: rgba(255, 255, 255, 0.78);
+        border: 1px solid rgba(15, 23, 42, 0.1);
+        border-radius: 8px;
+        box-shadow: 0 6px 14px rgba(15, 23, 42, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.65);
+    }
+
+    body.home-active .history-card {
+        padding: 18px;
+    }
+
+    body.home-active .history-card-title {
+        margin-bottom: 12px;
+        color: #0f172a;
+        font-size: 15px;
+        font-weight: 800;
+    }
+
+    .section-label {
+        margin: 18px 0 8px;
+        color: #047857;
+        font-size: 12px;
+        font-weight: 800;
+        letter-spacing: 0;
+    }
+
+    body.home-active .history-main-row {
+        display: grid;
+        grid-template-columns: minmax(260px, 1fr) 33px 33px 118px 118px;
+        gap: 8px;
+        align-items: center;
+        margin-bottom: 10px;
+    }
+
+    body.home-active .history-main-row select {
+        width: 100%;
+        max-width: none;
+        min-width: 0;
+        background-color: rgba(255, 255, 255, 0.88);
+        color: #0f172a;
+        border-color: rgba(15, 23, 42, 0.16);
+    }
+
+    body.home-active .checkbox-grid,
+    body.home-active .question-scope-panel {
+        background: rgba(248, 250, 252, 0.64);
+        border: 1px solid rgba(15, 23, 42, 0.09);
+        border-radius: 8px;
+        padding: 14px;
+    }
+
+    body.home-active .checkbox-grid {
+        grid-template-columns: repeat(3, minmax(150px, 1fr));
+        gap: 10px;
+    }
+
+    body.home-active .shuffle-label {
+        color: #1e293b;
+        background: rgba(255, 255, 255, 0.72);
+        border: 1px solid rgba(15, 23, 42, 0.08);
+        border-radius: 6px;
+        padding: 10px 12px;
+        margin: 0;
+    }
+
+    body.home-active .question-scope-panel {
+        margin-top: 0;
+    }
+
+    body.home-active .scope-field label,
+    body.home-active .scope-label,
+    body.home-active .scope-total-hint {
+        color: #334155;
+    }
+
+    body.home-active .scope-field select,
+    body.home-active .scope-number-input {
+        background-color: rgba(255, 255, 255, 0.88);
+        color: #0f172a;
+        border-color: rgba(15, 23, 42, 0.16);
+    }
+
+    body.home-active .file-hint {
+        padding: 14px 16px;
+        color: #334155;
+    }
+
+    body.home-active .file-hint summary,
+    body.home-active .hint-title {
+        color: #0f172a;
+    }
+
+    body.home-active .file-hint pre {
+        background-color: rgba(255, 255, 255, 0.84);
+        border-color: rgba(15, 23, 42, 0.1);
+        color: #be123c;
+    }
+
+    body.dark-mode.home-active {
+        background: #030a12;
+    }
+
+    body.dark-mode.home-active .home-matrix-canvas {
+        background: radial-gradient(circle at 20% 10%, rgba(46, 204, 113, 0.1), transparent 28%),
+                    linear-gradient(135deg, #030814 0%, #07111f 48%, #03100b 100%);
+    }
+
+    body.dark-mode.home-active .exam-header {
+        background: linear-gradient(180deg, rgba(6, 17, 31, 0.94), rgba(15, 23, 42, 0.9));
+        color: #f8fafc;
+        border-bottom: 1px solid rgba(46, 204, 113, 0.18);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 2px 8px rgba(0, 0, 0, 0.28);
+    }
+
+    body.dark-mode.home-active #examTimer {
+        background-color: rgba(15, 23, 42, 0.86) !important;
+        color: #d8f3e5;
+        border-color: rgba(125, 211, 168, 0.28);
+        box-shadow: none;
+    }
+
+    body.dark-mode.home-active .management-section {
+        color: #e5f7ef;
+        background: linear-gradient(180deg, rgba(15, 23, 42, 0.9), rgba(8, 47, 73, 0.5) 46%, rgba(8, 18, 32, 0.94));
+        border: 1px solid rgba(148, 163, 184, 0.24);
+        border-top: 1px solid rgba(46, 204, 113, 0.58);
+        box-shadow: 0 10px 24px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.05), inset 0 0 0 1px rgba(255, 255, 255, 0.03);
+    }
+
+    body.dark-mode.home-active .management-section h1,
+    body.dark-mode.home-active .history-card-title,
+    body.dark-mode.home-active .file-hint summary,
+    body.dark-mode.home-active .hint-title {
+        color: #f8fafc;
+    }
+
+    body.dark-mode.home-active .home-subtitle {
+        color: #9fd8c0;
+    }
+
+    body.dark-mode.home-active .history-card,
+    body.dark-mode.home-active .file-hint {
+        background: rgba(15, 23, 42, 0.78);
+        border: 1px solid rgba(148, 163, 184, 0.22);
+        box-shadow: 0 6px 14px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    }
+
+    body.dark-mode.home-active .section-label {
+        color: #7dd3a8;
+    }
+
+    body.dark-mode.home-active .history-main-row select,
+    body.dark-mode.home-active .scope-field select,
+    body.dark-mode.home-active .scope-number-input {
+        background-color: rgba(2, 6, 23, 0.72);
+        color: #f8fafc;
+        border-color: rgba(125, 211, 168, 0.35);
+    }
+
+    body.dark-mode.home-active .checkbox-grid,
+    body.dark-mode.home-active .question-scope-panel {
+        background: rgba(2, 6, 23, 0.32);
+        border: 1px solid rgba(148, 163, 184, 0.18);
+    }
+
+    body.dark-mode.home-active .shuffle-label {
+        color: #d8f3e5;
+        background: rgba(15, 23, 42, 0.58);
+        border: 1px solid rgba(148, 163, 184, 0.14);
+    }
+
+    body.dark-mode.home-active .scope-field label,
+    body.dark-mode.home-active .scope-label,
+    body.dark-mode.home-active .scope-total-hint,
+    body.dark-mode.home-active .file-hint {
+        color: #cbd5e1;
+    }
+
+    body.dark-mode.home-active .file-hint pre {
+        background-color: rgba(2, 6, 23, 0.72);
+        border-color: rgba(148, 163, 184, 0.18);
+        color: #ff8fab;
+    }
+
     /* 核心列排版 */
     .history-main-row {
         --history-main-gap: 4px;
@@ -992,11 +1267,18 @@
             height: 100dvh;
             overflow: hidden;
         }
+        body.home-active {
+            min-height: 100dvh;
+            height: auto;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
         .exam-header {
             padding: 10px 12px;
             gap: 8px;
             flex-wrap: wrap;
             font-size: 15px;
+            max-height: 160px;
         }
         .header-tools {
             width: 100%;
@@ -1021,9 +1303,29 @@
             flex-wrap: wrap;
             gap: var(--history-main-gap);
         }
+        body.home-active .management-section {
+            width: auto;
+            margin: 10px;
+            padding: 18px;
+        }
+        body.home-active .management-section h1 {
+            font-size: 26px;
+        }
+        .home-subtitle {
+            font-size: 13px;
+            margin-bottom: 16px;
+        }
+        body.home-active .history-main-row {
+            display: grid;
+            grid-template-columns: 1fr 33px 33px;
+            gap: 8px;
+        }
         .history-main-row select {
             flex: 1 1 100%;
             width: 100%;
+        }
+        body.home-active .history-main-row select {
+            grid-column: 1 / -1;
         }
         .btn-file-tool,
         .btn-trash-delete {
@@ -1032,10 +1334,20 @@
         }
         .btn-start-exam,
         .btn-stats-view {
+            grid-column: span 3;
             flex: 1 1 calc(50% - 8px);
             min-width: 0;
             padding: 0 12px;
             margin: 0;
+            width: 100%;
+        }
+        body.home-active .checkbox-grid,
+        body.home-active .question-scope-panel {
+            grid-template-columns: 1fr;
+            padding: 12px;
+        }
+        body.home-active .shuffle-label {
+            padding: 10px;
         }
         .checkbox-grid,
         .question-scope-panel {
@@ -1171,15 +1483,18 @@
         </label>
 
         <!-- 動態計時器 -->
-        <div class="proctor-status" id="examTimer" style="background-color: #34495e; font-family: monospace; font-size: 15px; letter-spacing: 1px;">作答時間 00:00:00</div>
+        <div class="proctor-status" id="examTimer" style="font-family: monospace; font-size: 15px; letter-spacing: 1px;">作答時間 00:00:00</div>
     </div>
 </div>
 
+<canvas id="homeMatrixCanvas" class="home-matrix-canvas" aria-hidden="true"></canvas>
+
 <div id="managementSection" class="management-section">
     <h1> 練習測驗系統 </h1>
+    <p class="home-subtitle" translate="no">題庫載入、測驗模式與複習設定集中管理</p>
     
     <div class="history-card" translate="no">
-        <div class="history-card-title">歷史紀錄：從已儲存題庫中選擇</div>
+        <div class="history-card-title">題庫控制台</div>
         
         <!-- 第一層核心動線：選單 ➔ 上傳/刪除題庫工具 ➔ 開始測驗 ➔ 學習統計 -->
         <div class="history-main-row">
@@ -1204,6 +1519,7 @@
             <button type="button" class="btn-stats-view" onclick="toggleStatsPanel()">學習統計</button>
         </div>
         
+        <div class="section-label">測驗模式</div>
         <!-- 第二層：多功能設定勾選網格 -->
         <div class="checkbox-grid">
             <label class="shuffle-label"><input type="checkbox" id="shuffleCheckbox"> 打亂題目</label>
@@ -1216,6 +1532,7 @@
             <label class="shuffle-label"><input type="checkbox" id="showTimerCheckbox"> 隱藏作答計時器</label>
         </div>
 
+        <div class="section-label">出題設定</div>
         <!-- 第三層：出題範圍設定，可指定全部、隨機題數或原始題號區間 -->
         <div class="question-scope-panel">
             <div class="scope-field">
@@ -1393,7 +1710,157 @@
         bindTooltipControls();
         bindThemeModeControl();
         updateTimerVisibility();
+        initializeHomeMatrixBackground();
+        bindDynamicChromeControls();
+        setHomeBackgroundVisible(true);
     };
+
+    function bindDynamicChromeControls() {
+        const scrollPositions = new WeakMap();
+        let lastMoveAt = Date.now();
+        let touchStartY = 0;
+
+        function setChromeVisible(isVisible) {
+            const shouldHide = !isVisible;
+            if (document.body.classList.contains('chrome-hidden') === shouldHide) return;
+            document.body.classList.toggle('chrome-hidden', shouldHide);
+        }
+
+        function handleScroll(target, currentTop) {
+            const lastScrollTop = scrollPositions.get(target) || 0;
+            const delta = currentTop - lastScrollTop;
+            if (Math.abs(delta) < 8) return;
+
+            if (!document.body.classList.contains('home-active')) {
+                if (currentTop <= 4) setChromeVisible(true);
+                scrollPositions.set(target, Math.max(0, currentTop));
+                return;
+            }
+
+            if (currentTop <= 40) {
+                setChromeVisible(true);
+            } else if (delta < 0) {
+                setChromeVisible(true);
+            } else {
+                setChromeVisible(false);
+            }
+
+            scrollPositions.set(target, Math.max(0, currentTop));
+        }
+
+        function handleIntent(deltaY) {
+            if (document.body.classList.contains('home-active')) return;
+            if (Math.abs(deltaY) < 4) return;
+            if (deltaY > 0) {
+                setChromeVisible(false);
+            } else {
+                setChromeVisible(true);
+            }
+        }
+
+        window.addEventListener('scroll', () => handleScroll(window, window.scrollY || 0), { passive: true });
+        window.addEventListener('wheel', event => handleIntent(event.deltaY), { passive: true });
+        window.addEventListener('touchstart', event => {
+            touchStartY = event.touches && event.touches.length ? event.touches[0].clientY : 0;
+        }, { passive: true });
+        window.addEventListener('touchmove', event => {
+            if (!event.touches || !event.touches.length) return;
+            handleIntent(touchStartY - event.touches[0].clientY);
+            touchStartY = event.touches[0].clientY;
+        }, { passive: true });
+
+        ['.exam-left-panel', '.stats-section'].forEach(selector => {
+            const target = document.querySelector(selector);
+            if (!target) return;
+            target.addEventListener('scroll', () => handleScroll(target, target.scrollTop || 0), { passive: true });
+        });
+
+        document.addEventListener('mousemove', event => {
+            const now = Date.now();
+            if (now - lastMoveAt < 80) return;
+            lastMoveAt = now;
+
+            if (event.clientY <= 72 || event.clientY >= window.innerHeight - 72) {
+                setChromeVisible(true);
+            }
+        });
+
+        setChromeVisible(true);
+    }
+
+    function setHomeBackgroundVisible(isVisible) {
+        const canvas = document.getElementById('homeMatrixCanvas');
+        document.body.classList.toggle('home-active', isVisible);
+        if (canvas) canvas.style.display = isVisible ? 'block' : 'none';
+        document.body.classList.remove('chrome-hidden');
+    }
+
+    function initializeHomeMatrixBackground() {
+        const canvas = document.getElementById('homeMatrixCanvas');
+        if (!canvas || canvas.dataset.ready === 'true') return;
+
+        canvas.dataset.ready = 'true';
+        const ctx = canvas.getContext('2d');
+        const glyphs = '01{}[]<>/\\#$CEHOSCPCTIAroot';
+        let columns = [];
+        let fontSize = 16;
+        let lastFrameTime = 0;
+        let resizeTimer = null;
+
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            fontSize = window.innerWidth < 760 ? 13 : 16;
+            const count = Math.ceil(canvas.width / fontSize);
+            columns = Array.from({ length: count }, () => Math.random() * canvas.height / fontSize);
+        }
+
+        function draw(timestamp = 0) {
+            if (canvas.style.display === 'none' || document.hidden) {
+                requestAnimationFrame(draw);
+                return;
+            }
+
+            const frameInterval = window.innerWidth < 760 ? 70 : 50;
+            if (timestamp - lastFrameTime < frameInterval) {
+                requestAnimationFrame(draw);
+                return;
+            }
+            lastFrameTime = timestamp;
+
+            const isDarkHome = document.body.classList.contains('dark-mode');
+            ctx.fillStyle = isDarkHome ? 'rgba(3, 8, 20, 0.18)' : 'rgba(238, 242, 247, 0.16)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.font = `${fontSize}px Consolas, Monaco, monospace`;
+            ctx.shadowBlur = isDarkHome ? 3 : 1;
+            ctx.shadowColor = isDarkHome ? 'rgba(74, 222, 128, 0.22)' : 'rgba(22, 163, 74, 0.1)';
+
+            columns.forEach((y, index) => {
+                const shouldGlow = Math.random() > 0.82;
+                const char = glyphs[Math.floor(Math.random() * glyphs.length)];
+                const x = index * fontSize;
+                if (shouldGlow) {
+                    ctx.fillStyle = isDarkHome ? 'rgba(190, 255, 216, 0.78)' : 'rgba(4, 120, 87, 0.62)';
+                    ctx.fillText(char, x, y * fontSize);
+                }
+
+                if (y * fontSize > canvas.height && Math.random() > 0.975) {
+                    columns[index] = 0;
+                } else {
+                    columns[index] = y + 0.55;
+                }
+            });
+
+            requestAnimationFrame(draw);
+        }
+
+        resize();
+        window.addEventListener('resize', () => {
+            clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(resize, 120);
+        });
+        draw();
+    }
 
     // 明暗模式會獨立保存，不跟測驗 checkbox 混在一起。
     function applyThemeMode(mode) {
@@ -1778,6 +2245,7 @@
             }
 
             renderStatsPanel();
+            setHomeBackgroundVisible(false);
             if (managementSection) managementSection.style.display = 'none';
             if (quizSection) quizSection.style.display = 'none';
             statsSection.style.display = 'block';
@@ -1803,8 +2271,9 @@
         if (quizSection) quizSection.style.display = 'none';
         if (managementSection) {
             managementSection.style.display = 'block';
-            managementSection.scrollTo({ top: 0, behavior: 'smooth' });
         }
+        setHomeBackgroundVisible(true);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
         updateTimerVisibility();
     }
 
@@ -2338,6 +2807,7 @@
             return;
         }
 
+        setHomeBackgroundVisible(false);
         document.getElementById('managementSection').style.display = 'none';
         document.getElementById('quizSection').style.display = 'flex'; // 修正為 flex 佈局
         const statsSection = document.getElementById('statsSection');
@@ -2369,6 +2839,7 @@
         resetSummaryBox();
         resetSessionMistakeTracking();
 
+        setHomeBackgroundVisible(false);
         document.getElementById('managementSection').style.display = 'none';
         document.getElementById('quizSection').style.display = 'flex';
         const statsSection = document.getElementById('statsSection');
