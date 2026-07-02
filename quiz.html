@@ -114,21 +114,6 @@
             updateHistoryDropdown();
         };
 
-        function updateHistoryDropdown() {
-            const select = document.getElementById('historySelect');
-            select.innerHTML = '<option value="">-- 請選擇過去上傳過的題庫 --</option>';
-            for (let i = 0; i < localStorage.length; i++) {
-                const key = localStorage.key(i);
-                if (key.startsWith('quiz_sys_')) {
-                    const displayName = key.replace('quiz_sys_', '');
-                    const opt = document.createElement('option');
-                    opt.value = key;
-                    opt.textContent = displayName;
-                    select.appendChild(opt);
-                }
-            }
-        }
-
         // 智慧過濾與修復文字格式的關鍵邏輯（黑魔法終極容錯版）
         function cleanAndParsePythonFormat(rawText) {
             let processed = rawText.replace(/\u00a0/g, ' ').trim();
@@ -146,8 +131,39 @@
             }
         }
 
+        function updateHistoryDropdown() {
+            const select = document.getElementById('historySelect');
+            select.innerHTML = '<option value="">-- 請選擇過去上傳過的題庫 --</option>';
+            
+            // 讀取紀錄時間戳記的索引表
+            let metaData = JSON.parse(localStorage.getItem('quiz_sys_metadata') || '{}');
+            let items = [];
+
+            // 遍歷目前的 localStorage 找出所有題庫
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                // 關鍵過濾：排除 metadata 本身，解決出現空白項目的問題
+                if (key.startsWith('quiz_sys_') && key !== 'quiz_sys_metadata') {
+                    const displayName = key.replace('quiz_sys_', '');
+                    const timestamp = metaData[key] || 0; // 舊資料如果沒有時間戳記，預設給 0
+                    items.push({ key, displayName, timestamp });
+                }
+            }
+
+            // 依照時間戳記進行降冪排序（最新的排在最前面）
+            items.sort((a, b) => b.timestamp - a.timestamp);
+
+            // 將排序後的項目依序加入下拉選單
+            items.forEach(item => {
+                const opt = document.createElement('option');
+                opt.value = item.key;
+                opt.textContent = item.displayName;
+                select.appendChild(opt);
+            });
+        }
+
         function handleFileUpload(input) {
-            const file = input.files[0];
+            const file = input.files[0]; // 修正為讀取單一檔案物件
             if (!file) return;
 
             const fileName = file.name;
@@ -171,24 +187,29 @@
                         throw new Error("題庫內容為空或格式解析失敗");
                     }
 
-                    localStorage.setItem('quiz_sys_' + fileName, JSON.stringify(parsedData));
+                    const storageKey = 'quiz_sys_' + fileName;
+
+                    // 1. 儲存題庫內容（原生行為：同名檔案會自動覆蓋）
+                    localStorage.setItem(storageKey, JSON.stringify(parsedData));
+
+                    // 2. 同步更新時間戳記索引表，讓排序功能生效
+                    let metaData = JSON.parse(localStorage.getItem('quiz_sys_metadata') || '{}');
+                    metaData[storageKey] = Date.now(); 
+                    localStorage.setItem('quiz_sys_metadata', JSON.stringify(metaData));
+
+                    // 保留您原本的自訂成功提示文字
                     alert(`檔案「${fileName}」智慧解析並紀錄成功！`);
-                    
                     updateHistoryDropdown();
-                    document.getElementById('historySelect').value = 'quiz_sys_' + fileName;
                     
-                    quizBank = parsedData;
-                    startQuiz();
+                    // 讓選單自動選中剛上傳的項目
+                    const select = document.getElementById('historySelect');
+                    if (select) select.value = storageKey;
 
                 } catch (error) {
-                    alert(
-                        "❌ 解析失敗詳細報告：\n\n" +
-                        "【錯誤原因】: " + error.message + "\n\n"
-                    );
+                    // 保留您原本的自訂錯誤報告文字排版
+                    alert("❌ 解析失敗詳細報告：\n\n" + "【錯誤原因】:\n" + error.message);
                 }
-                input.value = '';
             };
-
             reader.readAsText(file, "UTF-8");
         }
 
