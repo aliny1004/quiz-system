@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <title>練習測驗系統</title>
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f4f6f9; color: #333; max-width: 800px; margin: 0 auto; padding: 20px; }
+        h1 { text-align: center; color: #2c3e50; }
+        .management-section { background-color: #fff; padding: 30px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 20px; border-top: 5px solid #2ecc71; }
+        .box { margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px dashed #eee; }
+        .box:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+        .upload-btn, .action-btn { background-color: #3498db; color: white; border: none; padding: 10px 20px; font-size: 16px; border-radius: 5px; cursor: pointer; transition: 0.3s; }
+        .upload-btn { background-color: #2ecc71; }
+        .upload-btn:hover { background-color: #27ae60; }
+        .action-btn:hover { background-color: #2980b9; }
+        select { padding: 10px; font-size: 16px; width: 60%; max-width: 400px; border-radius: 5px; border: 1px solid #ccc; margin-right: 10px; }
+        
+        /* 提示區塊外觀優化 */
+        .file-hint { color: #555; font-size: 14px; margin-top: 15px; line-height: 1.6; text-align: left; }
+        .hint-title { margin-bottom: 12px; color: #2c3e50; }
+        .hint-item { margin-top: 10px; padding-left: 5px; }
+        .file-hint pre {
+            background-color: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 4px;
+            padding: 10px 14px;
+            margin: 6px 0 14px 0;
+            white-space: pre-wrap;       /* 允許自動換行，防止長題目撐破網頁 */
+            word-break: break-all;       /* 斷行防爆 */
+            font-family: Consolas, Monaco, monospace; /* 程式碼專用等寬字型 */
+            color: #c7254e;              /* 讓 JSON 語法稍微有顯色比較好讀 */
+        }
+
+        #quizSection { display: none; }
+        .summary { display: none; background-color: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 20px; text-align: center; border-top: 5px solid #e74c3c; }
+        .summary-text { font-size: 22px; font-weight: bold; color: #2c3e50; }
+        .card { background-color: #fff; padding: 20px; border-radius: 8px; margin-bottom: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); border-left: 5px solid #ccc; }
+        .correct { border-left: 5px solid #2ecc71; background-color: #f9fdfa; }
+        .wrong { border-left: 5px solid #e74c3c; background-color: #fffbfb; }
+        .options-group { margin: 10px 0; }
+        .option-label { display: block; margin: 8px 0; cursor: pointer; padding: 5px; border-radius: 4px; }
+        .option-label:hover { background-color: #f0f0f0; }
+        .input-group { margin: 15px 0 5px 0; font-size: 16px; }
+        .blank-input { width: 90%; padding: 10px; font-size: 16px; border: 1px solid #ccc; border-radius: 4px; transition: 0.3s; }
+        .blank-input:focus { border-color: #3498db; outline: none; box-shadow: 0 0 5px rgba(52,152,219,0.3); }
+        .btn-container { text-align: center; margin: 30px 0; }
+        .submit-btn { background-color: #e74c3c; color: white; border: none; padding: 12px 30px; font-size: 18px; border-radius: 5px; cursor: pointer; transition: 0.3s; }
+        .submit-btn:hover { background-color: #c0392b; }
+        .result-text { font-weight: bold; margin-top: 10px; display: none; line-height: 1.5; }
+        .correct-ans { color: green; }
+        .wrong-ans { color: red; }
+    </style>
+</head>
+<body>
+
+    <h1> 練習測驗系統 </h1>
+    
+    <div id="managementSection" class="management-section">
+        <div class="box">
+            <h3>歷史紀錄：從已儲存題庫中選擇</h3>
+            <select id="historySelect">
+                <option value="">-- 請選擇過去上傳過的題庫 --</option>
+            </select>
+            <button class="action-btn" onclick="loadSavedQuiz()">開始測驗</button>
+            <button class="action-btn" style="background-color: #95a5a6;" onclick="deleteSavedQuiz()">刪除此紀錄</button>
+        </div>
+
+        <div class="box">
+            <h3>新上傳：新增或更新題庫</h3>
+            <input type="file" id="fileInput" accept=".json,.csv,.txt" style="display: none;" onchange="handleFileUpload(this)">
+            <button class="upload-btn" onclick="document.getElementById('fileInput').click()">選擇新檔案上傳 (.json / .csv / .txt)</button>
+            
+            <div class="file-hint">
+                <div class="hint-title">💡 <strong>提示：</strong> 系統會自動分辨是「選擇題」還是「填空題」喔！</div>
+                
+                <div class="hint-item">
+                    <strong>1. CSV 格式說明 (支援包含引號與逗號的複雜題目)：</strong>
+                    <pre><code>欄位：題目類型(A/B), 配分, 題目, 答案, 選項1, 選項2, 選項3, 選項4
+範例 A (單選)：A,1,"這是題目, 包含逗號",3,選項A,選項B,選項C,選項D
+範例 B (簡答)：B,1,"請輸入...的英文",Apple,,,,</code></pre>
+                </div>
+
+                <div class="hint-item">
+                    <strong>2. JSON 英文填空格式：</strong>
+                    <pre><code>[ {"q":"中文", "ans":["答案A", "答案B"]} ]</code></pre>
+                </div>
+                
+                <div class="hint-item">
+                    <strong>3. JSON 選擇題格式：</strong>
+                    <pre><code>[ 
+  {
+    "q": "題目", 
+    "opts": ["1.選項A", "2.選項B", "3.選項C", "4.選項D"], 
+    "ans": "3"
+  } 
+]</code></pre>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="quizSection">
+        <div id="summaryBox" class="summary">
+            <h1> 測驗結果 </h1>
+            <p class="summary-text" id="statsText"></p>
+            <button class="action-btn" style="background-color: #e67e22;" onclick="startQuiz(); document.getElementById('summaryBox').style.display='none'; document.getElementById('submitBtn').style.display='inline-block';">再考一次</button>
+            <button class="action-btn" style="background-color: #34495e;" onclick="location.reload()">返回題庫主選單</button>
+        </div>
+
+        <div id="quizContainer"></div>
+
+        <div class="btn-container">
+            <button id="submitBtn" class="submit-btn" onclick="checkAnswers()">完成作答</button>
+        </div>
+    </div>
+
+    <script>
+        let quizBank = [];
+
+        window.onload = function() {
+            updateHistoryDropdown();
+        };
+
+        // 智慧過濾與修復文字格式的關鍵邏輯（黑魔法終極容錯版）
+        function cleanAndParsePythonFormat(rawText) {
+            let processed = rawText.replace(/\u00a0/g, ' ').trim();
+            processed = processed.replace(/#.*$/gm, '');
+
+            if (!processed.startsWith('[')) {
+                processed = processed.trim().replace(/,$/, '');
+                processed = '[' + processed + ']';
+            }
+
+            try {
+                return new Function(`return ${processed};`)();
+            } catch (e) {
+                return JSON.parse(processed);
+            }
+        }
+
+        function updateHistoryDropdown() {
+            const select = document.getElementById('historySelect');
+            select.innerHTML = '<option value="">-- 請選擇過去上傳過的題庫 --</option>';
+            
+            // 讀取紀錄時間戳記的索引表
+            let metaData = JSON.parse(localStorage.getItem('quiz_sys_metadata') || '{}');
+            let items = [];
+
+            // 遍歷目前的 localStorage 找出所有題庫
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                // 關鍵過濾：排除 metadata 本身，解決出現空白項目的問題
+                if (key.startsWith('quiz_sys_') && key !== 'quiz_sys_metadata') {
+                    const displayName = key.replace('quiz_sys_', '');
+                    const timestamp = metaData[key] || 0; // 舊資料如果沒有時間戳記，預設給 0
+                    items.push({ key, displayName, timestamp });
+                }
+            }
+
+            // 依照時間戳記進行降冪排序（最新的排在最前面）
+            items.sort((a, b) => b.timestamp - a.timestamp);
+
+            // 將排序後的項目依序加入下拉選單
+            items.forEach(item => {
+                const opt = document.createElement('option');
+                opt.value = item.key;
+                opt.textContent = item.displayName;
+                select.appendChild(opt);
+            });
+        }
+
+        function handleFileUpload(input) {
+            const file = input.files[0]; // 修正為讀取單一檔案物件
+            if (!file) return;
+
+            const fileName = file.name;
+            const reader = new FileReader();
+
+            reader.onload = function(e) {
+                let content = e.target.result;
+                try {
+                    console.log("檔案開頭前10個字元編碼：", Array.from(content.substring(0, 10)).map(c => c.charCodeAt(0)));
+                    
+                    content = content.trim();
+                    let parsedData = [];
+
+                    // 判斷是否為 JSON/Python 格式，否則走進階 CSV 解析
+                    if (content.startsWith('{') || content.startsWith('[') || content.includes("'q'") || content.includes('"q"')) {
+                        parsedData = cleanAndParsePythonFormat(content);
+                    } else {
+                        parsedData = parseCSV(content);
+                    }
+
+                    if (!Array.isArray(parsedData) || parsedData.length === 0) {
+                        throw new Error("題庫內容為空或格式解析失敗");
+                    }
+
+                    const storageKey = 'quiz_sys_' + fileName;
+
+                    // 1. 儲存題庫內容（原生行為：同名檔案會自動覆蓋）
+                    localStorage.setItem(storageKey, JSON.stringify(parsedData));
+
+                    // 2. 同步更新時間戳記索引表，讓排序功能生效
+                    let metaData = JSON.parse(localStorage.getItem('quiz_sys_metadata') || '{}');
+                    metaData[storageKey] = Date.now(); 
+                    localStorage.setItem('quiz_sys_metadata', JSON.stringify(metaData));
+
+                    // 保留您原本的自訂成功提示文字
+                    alert(`檔案「${fileName}」智慧解析並紀錄成功！`);
+                    updateHistoryDropdown();
+                    
+                    // 讓選單自動選中剛上傳的項目
+                    const select = document.getElementById('historySelect');
+                    if (select) select.value = storageKey;
+
+                } catch (error) {
+                    // 保留您原本的自訂錯誤報告文字排版
+                    alert("❌ 解析失敗詳細報告：\n\n" + "【錯誤原因】:\n" + error.message);
+                }
+            };
+            reader.readAsText(file, "UTF-8");
+        }
+
+        function loadSavedQuiz() {
+            const selectValue = document.getElementById('historySelect').value;
+            if (!selectValue) {
+                alert("請先選擇一個題庫！");
+                return;
+            }
+            quizBank = JSON.parse(localStorage.getItem(selectValue));
+            startQuiz();
+        }
+
+        function deleteSavedQuiz() {
+            const select = document.getElementById('historySelect');
+            const selectValue = select.value;
+            if (!selectValue) {
+                alert("請先選擇要刪除的題庫！");
+                return;
+            }
+            if (confirm(`確定要刪除「${select.options[select.selectedIndex].text}」的紀錄嗎？`)) {
+                localStorage.removeItem(selectValue);
+                updateHistoryDropdown();
+                alert("已刪除該紀錄。");
+            }
+        }
+
+        // 強大容錯的 CSV 解析器：支援引號與逗號巢狀結構
+        function parseCSV(text) {
+            const lines = text.split(/\r?\n/);
+            const result = [];
+            
+            lines.forEach((line, index) => {
+                if (!line.trim()) return;
+                
+                // 跳過第一列標頭
+                if (index === 0 && (line.includes("題目類型") || line.includes("配分"))) {
+                    return;
+                }
+
+                // 使用正規表達式完美切分包含雙引號與逗號的 CSV 欄位
+                const matches = line.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)|(?<=,|^)(?=,|$)/g) || [];
+                const columns = [];
+                
+                let currentStr = "";
+                // 修正 match 有時會把欄位切碎或殘留逗號的問題
+                line.split(',').forEach(part => {
+                    if (currentStr) {
+                        currentStr += "," + part;
+                        if (part.endsWith('"')) {
+                            columns.push(currentStr);
+                            currentStr = "";
+                        }
+                    } else if (part.startsWith('"') && !part.endsWith('"')) {
+                        currentStr = part;
+                    } else {
+                        columns.push(part);
+                    }
+                });
+
+                // 清理每個欄位的引號與前後空白
+                const cleanCols = columns.map(col => {
+                    let c = col.trim();
+                    if (c.startsWith('"') && c.endsWith('"')) {
+                        c = c.substring(1, c.length - 1);
+                    }
+                    return c.replace(/""/g, '"').trim(); // 恢復被跳脫的引號
+                });
+
+                // 確保最少要有基本欄位 (類型、配分、題目、答案)
+                if (cleanCols.length >= 4) {
+                    const type = cleanCols[0].toUpperCase();
+                    const questionText = cleanCols[2];
+                    const answerText = cleanCols[3];
+
+                    if (type === 'A') {
+                        // 單選題：抓取後方 4 個選項
+                        const opt1 = cleanCols[4] || "";
+                        const opt2 = cleanCols[5] || "";
+                        const opt3 = cleanCols[6] || "";
+                        const opt4 = cleanCols[7] || "";
+
+                        result.push({
+                            q: questionText,
+                            opts: [opt1, opt2, opt3, opt4],
+                            ans: answerText // 保持原本字串(1~4)，會與原本系統 radio 價值的 val (1~4) 契合
+                        });
+                    } else if (type === 'B') {
+                        // 簡答/填空題：不放 opts，答案包裝成陣列以相容你原本的填空邏輯
+                        result.push({
+                            q: questionText,
+                            ans: [answerText]
+                        });
+                    }
+                    // 如果之後有需要擴充 C:多選題，可以在此處追加 else if (type === 'C') 
+                }
+            });
+            return result;
+        }
+
+        function startQuiz() {
+            document.getElementById('managementSection').style.display = 'none';
+            document.getElementById('quizSection').style.display = 'block';
+            renderQuiz();
+        }
+
+        function renderQuiz() {
+            const container = document.getElementById('quizContainer');
+            container.innerHTML = '';
+
+            quizBank.forEach((item, index) => {
+                const qNum = index + 1;
+                
+                if (item.opts && Array.isArray(item.opts)) {
+                    let optsHtml = '';
+                    item.opts.forEach((opt, optIdx) => {
+                        const val = optIdx + 1;
+                        optsHtml += `
+                            <label class="option-label">
+                                <input type="radio" name="q${qNum}" value="${val}"> ${opt}
+                            </label>
+                        `;
+                    });
+
+                    container.innerHTML += `
+                        <div class="card" id="card${qNum}">
+                            <h3>第 ${qNum} 題：${item.q}</h3>
+                            <div class="options-group">${optsHtml}</div>
+                            <div class="result-text" id="result${qNum}"></div>
+                        </div>
+                    `;
+                } else {
+                    container.innerHTML += `
+                        <div class="card" id="card${qNum}">
+                            <h3>第 ${qNum} 題：請輸入【${item.q}】的英文：</h3>
+                            <div class="input-group">
+                                <strong>你的答案: </strong>
+                                <input type="text" class="blank-input" id="input${qNum}" placeholder="請在此輸入英文答案...">
+                            </div>
+                            <div class="result-text" id="result${qNum}"></div>
+                        </div>
+                    `;
+                }
+            });
+        }
+
+        function checkAnswers() {
+            let wrongCount = 0;
+            let totalQuestions = quizBank.length;
+            let hasUnanswered = false;
+
+            for (let index = 0; index < totalQuestions; index++) {
+                const qNum = index + 1;
+                const item = quizBank[index];
+                
+                if (item.opts && Array.isArray(item.opts)) {
+                    const selected = document.querySelector(`input[name="q${qNum}"]:checked`);
+                    if (!selected) { hasUnanswered = true; break; }
+                } else {
+                    const inputVal = document.getElementById(`input${qNum}`).value.trim();
+                    if (!inputVal) { hasUnanswered = true; break; }
+                }
+            }
+
+            if (hasUnanswered) {
+                const confirmSubmit = confirm("有題目未作答（或未填寫），確認要送出嗎？");
+                if (!confirmSubmit) return;
+            }
+
+            quizBank.forEach((item, index) => {
+                const qNum = index + 1;
+                const card = document.getElementById(`card${qNum}`);
+                const resultBox = document.getElementById(`result${qNum}`);
+                let isCorrect = false;
+                let displayHtml = '';
+
+                if (item.opts && Array.isArray(item.opts)) {
+                    const selected = document.querySelector(`input[name="q${qNum}"]:checked`);
+                    const userAns = selected ? selected.value : "未作答";
+                    
+                    document.querySelectorAll(`input[name="q${qNum}"]`).forEach(input => input.disabled = true);
+
+                    if (userAns === item.ans) {
+                        isCorrect = true;
+                        displayHtml = `結果： 正確！`;
+                    } else {
+                        const correctText = item.opts[parseInt(item.ans) - 1];
+                        displayHtml = `你的答案：${userAns === "未作答" ? "未作答" : userAns}<br>結果：❌ 錯誤（正確答案應該是：${correctText}）`;
+                    }
+                } else {
+                    const inputElem = document.getElementById(`input${qNum}`);
+                    const userAns = inputElem.value.trim();
+                    inputElem.disabled = true;
+
+                    const validAnswers = Array.isArray(item.ans) ? item.ans : [item.ans];
+                    // 只要使用者的答案符合任何一個設定的正確答案，都算對
+                    isCorrect = validAnswers.some(ans => ans.trim() === userAns);
+
+                    // 關鍵修改：取陣列的最後一個元素作為唯一顯示的正確答案
+                    const lastCorrectAnswer = validAnswers[validAnswers.length - 1].trim();
+
+                    if (isCorrect) {
+                        displayHtml = `結果： 正確！`;
+                    } else {
+                        displayHtml = `你的答案：${userAns ? userAns : "未填寫"}<br>結果：❌ 錯誤（正確答案：${lastCorrectAnswer}）`;
+                    }
+                }
+
+                if (isCorrect) {
+                    card.classList.add('correct');
+                    resultBox.className = "result-text correct-ans";
+                } else {
+                    wrongCount++;
+                    card.classList.add('wrong');
+                    resultBox.className = "result-text wrong-ans";
+                }
+                resultBox.innerHTML = displayHtml;
+                resultBox.style.display = "block";
+            });
+
+            document.getElementById('statsText').innerHTML = `總共 ${totalQuestions} 題，錯 ${wrongCount} 題`;
+            document.getElementById('summaryBox').style.display = "block";
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            document.getElementById('submitBtn').style.display = "none";
+        }
+    </script>
+</body>
+</html>
