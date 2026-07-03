@@ -5,13 +5,13 @@
   │
   ├── Body (UI 畫面)
   │     ├── .exam-header         - 動態頂部導覽列：系統名稱、明暗模式切換器與作答計時器 (#examTimer)
-  │     │                         往下捲動時收起，往上捲動或滑鼠靠近頂部時顯示；計時器可即時隱藏且保留佔位
+  │     │                         往下捲動時收起，往上捲動或滑鼠靠近頂部時顯示；手機考試中顯示題目面板開關與短版標題，窄寬度只顯示 PQS，面板開啟時固定顯示
   │     │
   │     ├── #themeTransitionOverlay - 明暗模式切換過渡遮罩：短暫覆蓋切換前色調，再淡出顯示切換後畫面
   │     │
   │     ├── #managementSection   - 管理區塊（首頁面板，跟隨網頁本身捲動）
   │     │     ├── .history-card  - 歷史紀錄卡片
-  │     │     │     ├── .history-main-row - 題庫選單、上傳/刪除題庫 icon、開始測驗與學習統計按鈕；內建 EDRP 題庫固定顯示
+  │     │     │     ├── .history-main-row - 題庫選單、上傳/刪除題庫 icon、開始測驗與學習統計按鈕；手機版工具 icon 固定在下拉選單右側
   │     │     │     ├── .checkbox-grid    - 多功能設定區：打亂題目、隱藏已答對題目、錯題模式、打亂選項、答案提示、隱藏作答計時器
   │     │     │     ├── .question-scope-panel - 出題範圍設定：全部、隨機題數、指定題號區間，並提示目前題庫總題數
   │     │     │                              checkbox 狀態會寫入 LocalStorage 並於下次載入還原
@@ -21,11 +21,11 @@
   │     │
   │     ├── #quizSection         - 進入測驗後的雙欄側邊評分版面（預設隱藏）
   │     │     └── .quiz-active-layout
-  │     │           ├── .exam-left-panel  - 左側題目區：結果結算區 (#summaryBox) 與動態題目容器 (#quizContainer)
-  │     │           └── .exam-right-panel - 右側狀態面板：題目跳轉網格 (#examNavGrid) 與狀態圖例說明
+  │     │           ├── .exam-left-panel  - 左側題目區：結果結算區 (#summaryBox，結算按鈕同寬置中，僅錯題開關貼齊再次測驗左側) 與動態題目容器 (#quizContainer)
+  │     │           └── .exam-right-panel - 右側狀態面板：題目跳轉網格 (#examNavGrid) 與狀態圖例說明；手機版由 header 三條線開關收合為左側抽屜
   │     │
-  │     ├── .exam-footer         - 動態底部導覽列：作答提示與完成作答提交按鈕 (#submitBtn)，跟隨 header 顯示/收起
-  │     └── Responsive Layout    - 820px 以下自動切換手機模式：首頁單欄、測驗區上下堆疊、題號面板自適應
+  │     ├── .exam-footer         - 動態底部導覽列：左側作答提示與右側完成作答提交按鈕 (#submitBtn)，手機版維持桌面式左右配置，提示最多兩行且寬度不足時從逗號後換行
+  │     └── Responsive Layout    - 820px 以下自動切換手機模式：首頁單欄、測驗區保留題目主欄、題號面板改為左側抽屜
   │
   └── Script (邏輯控制)
         ├── 全域狀態與資料模型
@@ -76,9 +76,10 @@
         │
         ├── 考題動態渲染與互動
         │     ├── renderQuizQuestions()     - 動態生成考題卡片；選項可打亂但保留原始答案 index；答案提示模式可短暫標出正確選項
-        │     ├── buildNavigationGrid()     - 動態生成右側 Item Review 題號跳轉按鈕
+        │     ├── buildNavigationGrid()     - 動態生成右側 Item Review 題號跳轉按鈕；手機點題號後自動收合題目面板
         │     ├── updateNavStatus()         - 即時刷新右側網格之「未作答/已作答/已標記」狀態
-        │     ├── toggleMark()              - 切換 Mark 標記狀態並更新按鈕樣式
+        │     ├── toggleMobileExamPanel()   - 手機版切換題目面板左側抽屜展開/收合狀態，展開時保持 header/footer 顯示
+        │     ├── toggleMark()              - 切換 Mark 標記狀態並更新按鈕樣式，支援亮色/深色模式配色
         │     ├── checkQuestionHasAnswer()  - 判定單選鈕是否已勾選或填空欄位是否有內容
         │     ├── showAnswerHint()           - 答案提示模式下，點選任一選項後讓正確選項亮綠兩秒
         │     ├── scrollToNextQuestion()      - 選完選擇題後延遲 0.5 秒平滑捲動；答案提示模式下答錯會停留原題
@@ -141,13 +142,13 @@
         position: sticky;
         top: 0;
         z-index: 10020;
-        background-color: #1a252f;
+        background-color: #0b1220;
         color: #ffffff;
         padding: 12px 24px;
         display: flex;
         justify-content: space-between;
         align-items: center;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.36);
         font-size: 18px;
         font-weight: bold;
         flex-shrink: 0;   /* 防止被擠壓 */
@@ -177,6 +178,12 @@
         gap: 14px;
         flex-shrink: 0;
     }
+    .header-main {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-width: 0;
+    }
     .app-title-button {
         background: none;
         border: none;
@@ -187,8 +194,17 @@
         cursor: pointer;
         text-align: left;
     }
+    .app-title-short {
+        display: none;
+    }
     .app-title-button:hover {
         text-decoration: underline;
+    }
+    .mobile-header-panel-toggle {
+        display: none;
+    }
+    .mobile-panel-backdrop {
+        display: none;
     }
     .theme-switch {
         display: inline-flex;
@@ -233,25 +249,22 @@
         transform: translateX(24px);
     }
     .exam-header .proctor-status {
-        background-color: #27ae60;
+        background-color: rgba(15, 23, 42, 0.86);
+        color: #d8f3e5;
+        border: 1px solid rgba(125, 211, 168, 0.28);
         padding: 4px 10px;
         border-radius: 4px;
         font-size: 13px;
         min-width: 150px;
         text-align: center;
         box-sizing: border-box;
+        box-shadow: none;
     }
 
     /* 深色模式：只覆蓋色彩，不改動既有版面與測驗流程 */
     body.dark-mode {
         background-color: #111827;
         color: #d8dee9;
-    }
-    body.dark-mode .exam-header,
-    body.dark-mode .exam-footer {
-        background-color: #0b1220;
-        color: #f8fafc;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.36);
     }
     body.dark-mode h1,
     body.dark-mode .card-title,
@@ -314,6 +327,23 @@
         border-color: #69f0ae;
         color: #03130a;
         box-shadow: 0 0 0 2px rgba(105, 240, 174, 0.55), 0 0 18px rgba(0, 200, 83, 0.72);
+    }
+    body.dark-mode .mark-btn {
+        background-color: #1f2937;
+        border-color: #f59e0b;
+        color: #fbbf24;
+        box-shadow: 0 1px 6px rgba(0, 0, 0, 0.24);
+    }
+    body.dark-mode .mark-btn:hover {
+        background-color: #2d2312;
+        border-color: #fbbf24;
+        color: #fde68a;
+    }
+    body.dark-mode .mark-btn.active {
+        background-color: #b45309;
+        border-color: #f59e0b;
+        color: #fff7ed;
+        box-shadow: 0 2px 10px rgba(180, 83, 9, 0.3);
     }
     body.dark-mode .question-stat-badge,
     body.dark-mode .stats-mini-card,
@@ -427,6 +457,9 @@
         overflow-y: auto; /* 面板資訊太多時獨立滾動 */
         flex-shrink: 0;
     }
+    .mobile-exam-panel-toggle {
+        display: none;
+    }
     .info-card {
         background: #fff;
         padding: 15px;
@@ -480,25 +513,33 @@
     }
 
     /* 題目卡片優化 */
-    .summary { display: none; background-color: #fff; padding: 20px 24px 86px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 20px; text-align: center; border-top: 5px solid #e74c3c; position: relative; min-height: 270px; }
+    .summary { display: none; background-color: #fff; padding: 20px 24px 28px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 20px; text-align: center; border-top: 5px solid #e74c3c; position: relative; min-height: 270px; }
     .summary-text { font-size: 22px; font-weight: bold; color: #2c3e50; }
     .summary-note { display: inline-block; margin-top: 8px; font-size: 14px; font-weight: 600; color: #64748b; }
     .summary-actions {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 160px minmax(0, 1fr);
+        grid-template-rows: 36px 36px;
+        align-items: center;
+        justify-content: center;
+        column-gap: 6px;
+        row-gap: 12px;
         margin-top: 24px;
     }
     .summary-stats-btn {
         background-color: #16a085;
-        min-width: 150px;
+        grid-column: 2;
+        grid-row: 1;
     }
     .summary-retry-row {
-        position: absolute;
-        right: 24px;
-        bottom: 24px;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        gap: 8px;
-        flex-wrap: wrap;
+        display: contents;
+    }
+    .summary-retry-row .wrong-retry-toggle {
+        grid-column: 1;
+        grid-row: 2;
+        justify-self: end;
+        align-self: center;
+        white-space: nowrap;
     }
     .wrong-retry-toggle {
         display: inline-flex;
@@ -524,9 +565,17 @@
     }
     .summary-retry-btn {
         background-color: #e67e22;
-        min-width: 112px;
-        padding: 8px 14px;
+        grid-column: 2;
+        grid-row: 2;
+    }
+    .summary-stats-btn,
+    .summary-retry-btn {
+        width: 160px;
+        min-width: 160px;
+        height: 36px;
+        padding: 0 14px;
         font-size: 14px;
+        box-sizing: border-box;
     }
     .card { 
         background-color: #fff; 
@@ -628,12 +677,13 @@
 
     /* 螢幕最底部 */
     .exam-footer {
-        background-color: #1a252f;
+        background-color: #0b1220;
+        color: #f8fafc;
         padding: 6px 24px;
         display: flex;
         justify-content: space-between;
         align-items: center;
-        box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+        box-shadow: 0 -2px 8px rgba(0,0,0,0.36);
         
         position: fixed;   /* 關鍵：強制釘死在視窗底部 */
         bottom: 0;         /* 貼緊最下方 */
@@ -701,20 +751,6 @@
 
     body.home-active {
         background: #eef2f7;
-    }
-
-    body.home-active .exam-header {
-        background: linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(241, 245, 249, 0.9));
-        color: #0f172a;
-        border-bottom: 1px solid rgba(15, 23, 42, 0.12);
-        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.75), 0 2px 8px rgba(15, 23, 42, 0.08);
-    }
-
-    body.home-active #examTimer {
-        background-color: rgba(236, 253, 245, 0.9) !important;
-        color: #047857;
-        border: 1px solid rgba(16, 185, 129, 0.28);
-        box-shadow: 0 8px 20px rgba(16, 185, 129, 0.12);
     }
 
     body.home-active .management-section {
@@ -853,20 +889,6 @@
         background: radial-gradient(circle at 20% 10%, rgba(22, 101, 52, 0.045), transparent 30%),
                     linear-gradient(135deg, #01040a 0%, #03101a 50%, #010806 100%);
         opacity: 0.64;
-    }
-
-    body.dark-mode.home-active .exam-header {
-        background: linear-gradient(180deg, rgba(6, 17, 31, 0.94), rgba(15, 23, 42, 0.9));
-        color: #f8fafc;
-        border-bottom: 1px solid rgba(46, 204, 113, 0.18);
-        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 2px 8px rgba(0, 0, 0, 0.28);
-    }
-
-    body.dark-mode.home-active #examTimer {
-        background-color: rgba(15, 23, 42, 0.86) !important;
-        color: #d8f3e5;
-        border-color: rgba(125, 211, 168, 0.28);
-        box-shadow: none;
     }
 
     body.dark-mode.home-active .management-section {
@@ -1337,15 +1359,68 @@
             flex-wrap: wrap;
             font-size: 15px;
             max-height: 160px;
+            justify-content: space-between;
+        }
+        .header-main {
+            flex: 1 1 auto;
+            min-width: 0;
+            max-width: calc(100% - 142px);
+        }
+        .app-title-button {
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .app-title-full {
+            display: none;
+        }
+        .app-title-short {
+            display: inline;
+        }
+        .app-title-short::before {
+            content: " (";
+        }
+        .app-title-short::after {
+            content: ")";
         }
         .header-tools {
-            width: 100%;
-            justify-content: space-between;
+            display: flex;
+            order: 2;
+            flex: 0 0 auto;
+            width: auto;
+            justify-content: flex-end;
             gap: 8px;
         }
+        .theme-switch {
+            flex: 0 0 auto;
+        }
         .exam-header .proctor-status {
+            flex: 0 0 auto;
             min-width: 132px;
             font-size: 13px;
+        }
+        body.quiz-active .mobile-header-panel-toggle {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 34px;
+            height: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 6px;
+            background: linear-gradient(180deg, rgba(52, 73, 94, 0.96), rgba(24, 36, 48, 0.98));
+            color: #ffffff;
+            font-size: 20px;
+            font-weight: 800;
+            line-height: 1;
+            cursor: pointer;
+            flex: 0 0 auto;
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 2px 8px rgba(0, 0, 0, 0.22);
+        }
+        body.dark-mode.quiz-active .mobile-header-panel-toggle {
+            background: linear-gradient(180deg, rgba(30, 41, 59, 0.98), rgba(8, 13, 24, 0.98));
+            border-color: rgba(148, 163, 184, 0.24);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 2px 8px rgba(0, 0, 0, 0.34);
         }
         .management-section {
             margin: 10px;
@@ -1383,7 +1458,7 @@
             width: 100%;
         }
         body.home-active .history-main-row select {
-            grid-column: 1 / -1;
+            grid-column: 1;
         }
         .btn-file-tool,
         .btn-trash-delete {
@@ -1429,13 +1504,75 @@
             padding: 14px;
             padding-bottom: 78px;
         }
+        body.mobile-panel-open .exam-left-panel {
+            overflow: hidden;
+            touch-action: none;
+        }
         .exam-right-panel {
-            width: auto;
-            max-height: 26dvh;
+            position: fixed;
+            top: 128px;
+            left: 0;
+            bottom: 56px;
+            z-index: 10010;
+            width: min(86vw, 360px);
+            max-height: none;
+            border-right: 1px solid #dcdde1;
             border-left: none;
-            border-top: 1px solid #dcdde1;
+            border-top: none;
             padding: 10px 12px;
             flex-shrink: 0;
+            transform: translateX(-100%);
+            transition: transform 0.24s ease, background-color 0.36s ease, color 0.36s ease, box-shadow 0.24s ease;
+            box-shadow: 4px 0 16px rgba(15, 23, 42, 0.18);
+            overscroll-behavior: contain;
+            touch-action: pan-y;
+        }
+        .exam-right-panel.is-open {
+            transform: translateX(0);
+        }
+        body.chrome-hidden .exam-right-panel {
+            top: 10px;
+        }
+        .mobile-exam-panel-toggle {
+            display: none;
+            position: absolute;
+            left: -36px;
+            top: 12px;
+            width: 36px;
+            height: 96px;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+            border: 1px solid #dcdde1;
+            border-right: none;
+            border-radius: 8px 0 0 8px;
+            background-color: #16a085;
+            color: #ffffff;
+            font-size: 12px;
+            font-weight: 800;
+            line-height: 1.1;
+            cursor: pointer;
+            writing-mode: vertical-rl;
+            letter-spacing: 0;
+            box-shadow: -3px 2px 10px rgba(15, 23, 42, 0.16);
+        }
+        body.dark-mode .mobile-exam-panel-toggle {
+            background-color: #0f766e;
+            border-color: #334155;
+        }
+        .mobile-panel-backdrop {
+            position: fixed;
+            inset: 0;
+            z-index: 10005;
+            display: block;
+            background: rgba(2, 6, 23, 0.28);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease;
+        }
+        body.mobile-panel-open .mobile-panel-backdrop {
+            opacity: 1;
+            pointer-events: auto;
         }
         .info-card {
             margin-bottom: 8px;
@@ -1474,27 +1611,28 @@
             padding: 10px;
         }
         .summary {
-            padding: 16px 12px;
+            padding: 16px 12px 18px;
             min-height: auto;
         }
         .summary-text {
             font-size: 18px;
         }
         .summary-actions {
-            display: grid;
-            justify-items: center;
-            gap: 12px;
+            grid-template-columns: minmax(0, 1fr) 150px minmax(0, 1fr);
+            grid-template-rows: 34px 34px;
+            column-gap: 4px;
+            row-gap: 10px;
             margin-top: 20px;
         }
-        .summary-retry-row {
-            position: static;
-            width: 100%;
-            gap: 8px;
+        .summary-retry-row .wrong-retry-toggle {
+            font-size: 12px;
+            gap: 4px;
         }
         .summary-stats-btn,
         .summary-retry-btn {
-            width: 100%;
-            min-width: 0;
+            width: 150px;
+            min-width: 150px;
+            height: 34px;
         }
         .stats-summary-grid {
             grid-template-columns: 1fr;
@@ -1513,14 +1651,72 @@
         .exam-footer {
             padding: 8px 12px calc(8px + env(safe-area-inset-bottom));
             gap: 8px;
+            justify-content: space-between;
+            align-items: center;
         }
         .footer-hint-text {
+            display: block;
+            flex: 1 1 auto;
+            min-width: 0;
+            max-height: 30px;
+            overflow: hidden;
+            line-height: 15px;
+            white-space: normal;
+            font-size: 11px;
+        }
+        .footer-hint-segment {
+            display: inline-block;
+            white-space: nowrap;
+        }
+        .exam-footer > div:last-child {
+            display: flex;
+            justify-content: flex-end;
+            flex: 0 0 auto;
+        }
+        .exam-footer .submit-btn {
+            min-height: 30px;
+            width: auto;
+            padding: 5px 12px;
+            font-size: 13px;
+            line-height: 1.2;
+            white-space: nowrap;
+        }
+        .summary-actions .action-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 14px;
+        }
+    }
+
+    @media (max-width: 520px) {
+        .exam-header {
+            column-gap: 6px;
+        }
+        .header-main {
+            gap: 6px;
+            max-width: calc(100% - 132px);
+        }
+        .app-title-main {
             display: none;
         }
-        .submit-btn,
-        .action-btn {
-            width: 100%;
-            padding: 10px 14px;
+        .app-title-short::before,
+        .app-title-short::after {
+            content: "";
+        }
+        .app-title-button {
+            font-size: 14px;
+        }
+    }
+
+    @media (max-width: 380px) {
+        .header-main {
+            max-width: calc(100% - 126px);
+        }
+        .exam-header .proctor-status {
+            min-width: 124px;
+            padding-inline: 8px;
+            font-size: 12px;
         }
     }
 
@@ -1529,7 +1725,14 @@
 <body>
 
 <div class="exam-header" translate="no">
-    <button type="button" class="app-title-button" onclick="returnHomeFromHeader()">練習測驗系統 (Practice Quiz System)</button>
+    <div class="header-main">
+        <button type="button" class="mobile-header-panel-toggle" id="mobileHeaderPanelToggle" onclick="toggleMobileExamPanel()" aria-label="展開或收合題目面板" aria-expanded="false">☰</button>
+        <button type="button" class="app-title-button" onclick="returnHomeFromHeader()">
+            <span class="app-title-main">練習測驗系統</span>
+            <span class="app-title-full"> (Practice Quiz System)</span>
+            <span class="app-title-short">PQS</span>
+        </button>
+    </div>
 
     <div class="header-tools">
         <!-- 明暗模式滑動切換器：太陽為正常模式，月亮為深色模式 -->
@@ -1683,7 +1886,10 @@
             <div id="quizContainer"></div>
         </div>
 
-        <div class="exam-right-panel" translate="no">
+        <div class="mobile-panel-backdrop" id="mobilePanelBackdrop" onclick="closeMobileExamPanel()" aria-hidden="true"></div>
+
+        <div class="exam-right-panel" id="examRightPanel" translate="no">
+            <button type="button" class="mobile-exam-panel-toggle" id="mobileExamPanelToggle" onclick="toggleMobileExamPanel()" aria-label="展開或收合題目面板" aria-expanded="false">題目</button>
 
             <div class="info-card" style="flex: 1; display: flex; flex-direction: column;">
                 <h4>題目面板 (Item Review)</h4>
@@ -1703,7 +1909,7 @@
     </div>
 
     <div class="exam-footer" translate="no">
-        <div class="footer-hint-text">請檢查所有題目面板狀態後，點擊右側按鈕送出。</div>
+        <div class="footer-hint-text"><span class="footer-hint-segment">請檢查所有題目面板狀態後，</span><span class="footer-hint-segment">點擊右側按鈕送出。</span></div>
         <div>
             <button id="submitBtn" class="submit-btn" onclick="checkAnswers()">完成作答 (Submit Exam)</button>
         </div>
@@ -1780,12 +1986,21 @@
         let touchStartY = 0;
 
         function setChromeVisible(isVisible) {
+            if (document.body.classList.contains('mobile-panel-open')) {
+                isVisible = true;
+            }
             const shouldHide = !isVisible;
             if (document.body.classList.contains('chrome-hidden') === shouldHide) return;
             document.body.classList.toggle('chrome-hidden', shouldHide);
         }
 
         function handleScroll(target, currentTop) {
+            if (document.body.classList.contains('mobile-panel-open')) {
+                setChromeVisible(true);
+                scrollPositions.set(target, Math.max(0, currentTop));
+                return;
+            }
+
             const lastScrollTop = scrollPositions.get(target) || 0;
             const delta = currentTop - lastScrollTop;
             if (Math.abs(delta) < 8) return;
@@ -1808,6 +2023,10 @@
         }
 
         function handleIntent(deltaY) {
+            if (document.body.classList.contains('mobile-panel-open')) {
+                setChromeVisible(true);
+                return;
+            }
             if (document.body.classList.contains('home-active')) return;
             if (Math.abs(deltaY) < 4) return;
             if (deltaY > 0) {
@@ -2360,6 +2579,8 @@
             }
 
             renderStatsPanel();
+            document.body.classList.remove('quiz-active');
+            closeMobileExamPanel();
             setHomeBackgroundVisible(true);
             if (managementSection) managementSection.style.display = 'none';
             if (quizSection) quizSection.style.display = 'none';
@@ -2379,6 +2600,8 @@
         resetExamTimer();
 
         isExamInProgress = false;
+        document.body.classList.remove('quiz-active');
+        closeMobileExamPanel();
         if (statsSection) statsSection.style.display = 'none';
         if (quizSection) quizSection.style.display = 'none';
         if (managementSection) {
@@ -2561,6 +2784,33 @@
         const statsText = document.getElementById('statsText');
         if (summaryBox) summaryBox.style.display = 'none';
         if (statsText) statsText.innerHTML = '';
+    }
+
+    function setMobileExamPanelOpen(isOpen) {
+        const panel = document.getElementById('examRightPanel');
+        const toggle = document.getElementById('mobileExamPanelToggle');
+        const headerToggle = document.getElementById('mobileHeaderPanelToggle');
+        if (!panel) return;
+
+        panel.classList.toggle('is-open', isOpen);
+        document.body.classList.toggle('mobile-panel-open', isOpen);
+        if (isOpen) {
+            document.body.classList.remove('chrome-hidden');
+        }
+        [toggle, headerToggle].forEach(function(button) {
+            if (!button) return;
+            button.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+        });
+    }
+
+    function toggleMobileExamPanel() {
+        const panel = document.getElementById('examRightPanel');
+        if (!panel) return;
+        setMobileExamPanelOpen(!panel.classList.contains('is-open'));
+    }
+
+    function closeMobileExamPanel() {
+        setMobileExamPanelOpen(false);
     }
 
     function applyQuestionScope(pool, settings) {
@@ -2922,6 +3172,7 @@
         setHomeBackgroundVisible(false);
         document.getElementById('managementSection').style.display = 'none';
         document.getElementById('quizSection').style.display = 'flex'; // 修正為 flex 佈局
+        document.body.classList.add('quiz-active');
         const statsSection = document.getElementById('statsSection');
         if (statsSection) statsSection.style.display = 'none';
         markedQuestions = {};
@@ -2929,6 +3180,7 @@
         isExamInProgress = true;
         resetSummaryBox();
         resetSessionMistakeTracking();
+        closeMobileExamPanel();
 
         renderQuizQuestions();
         buildNavigationGrid();
@@ -2950,10 +3202,12 @@
         isExamInProgress = true;
         resetSummaryBox();
         resetSessionMistakeTracking();
+        closeMobileExamPanel();
 
         setHomeBackgroundVisible(false);
         document.getElementById('managementSection').style.display = 'none';
         document.getElementById('quizSection').style.display = 'flex';
+        document.body.classList.add('quiz-active');
         const statsSection = document.getElementById('statsSection');
         if (statsSection) statsSection.style.display = 'none';
 
@@ -3161,6 +3415,7 @@
             btn.textContent = index + 1;
             btn.onclick = function() {
                 document.getElementById(`question_card_${index}`).scrollIntoView({ behavior: 'smooth' });
+                closeMobileExamPanel();
             };
             grid.appendChild(btn);
         });

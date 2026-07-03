@@ -54,6 +54,17 @@ v11.0.0
 - 中型功能或重要改善：`v11.1.0`
 - 階段性大版本：`v12.0.0`
 
+## 更新紀錄
+
+### v12.1.0
+
+- 手機版考試中題目面板改為 header 三條線控制的左側抽屜，支援點空白處收合與面板內獨立滑動
+- 手機版 header、footer、首頁題庫控制列與結算區按鈕排版優化
+- 桌面版與手機版結算區統一為同寬置中按鈕，僅錯題開關貼齊再次測驗左側
+- header、footer 與計時器在亮色/深色模式下保持一致暗色視覺
+- 統計頁套用首頁 Matrix 背景，結束作答返回首頁時重置計時器
+- 深色模式新增 Mark 標記按鈕配色
+
 建議流程：
 
 ```text
@@ -84,7 +95,8 @@ push
 │
 ├── Body
 │   ├── .exam-header
-│   │   ├── 系統名稱 / 返回首頁
+│   │   ├── 系統名稱 / 返回首頁，手機窄寬度自動縮為 PQS
+│   │   ├── 手機考試中三條線題目面板開關，面板開啟時固定顯示 header/footer
 │   │   ├── 明暗模式切換器
 │   │   └── 作答計時器 #examTimer
 │   │
@@ -94,7 +106,7 @@ push
 │   ├── #managementSection
 │   │   ├── 首頁標題與說明
 │   │   ├── .history-card
-│   │   │   ├── 題庫下拉選單
+│   │   │   ├── 題庫下拉選單，手機版上傳/刪除 icon 固定在右側同列
 │   │   │   ├── 上傳題庫 icon
 │   │   │   ├── 刪除題庫 icon
 │   │   │   ├── 開始測驗
@@ -113,15 +125,16 @@ push
 │   ├── #quizSection
 │   │   └── .quiz-active-layout
 │   │       ├── .exam-left-panel
-│   │       │   ├── #summaryBox
+│   │       │   ├── #summaryBox，結算按鈕同寬置中，僅錯題開關貼齊再次測驗左側
 │   │       │   └── #quizContainer
 │   │       └── .exam-right-panel
+│   │           ├── 手機版由 header 三條線控制的左側收合題目面板
 │   │           ├── #examNavGrid
 │   │           └── 狀態圖例
 │   │
 │   └── .exam-footer
-│       ├── 作答提示
-│       └── 完成作答按鈕 #submitBtn
+│       ├── 左側作答提示，手機版保留桌面式提醒文字且最多兩行，寬度不足時從逗號後換行
+│       └── 右側完成作答按鈕 #submitBtn
 │
 └── Script
     ├── 全域狀態與資料模型
@@ -171,7 +184,8 @@ push
     │   ├── renderQuizQuestions()
     │   ├── buildNavigationGrid()
     │   ├── updateNavStatus()
-    │   ├── toggleMark()
+    │   ├── toggleMobileExamPanel()
+    │   ├── toggleMark()，Mark 標記按鈕支援亮色/深色模式配色
     │   ├── checkQuestionHasAnswer()
     │   ├── showAnswerHint()
     │   ├── scrollToNextQuestion()
