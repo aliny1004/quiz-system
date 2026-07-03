@@ -15,7 +15,7 @@
   │     │     │     ├── .checkbox-grid    - 多功能設定區：打亂題目、隱藏已答對題目、錯題模式、打亂選項、答案提示、隱藏作答計時器
   │     │     │     ├── .question-scope-panel - 出題範圍設定：全部、隨機題數、指定題號區間，並提示目前題庫總題數
   │     │     │                              checkbox 狀態會寫入 LocalStorage 並於下次載入還原
-  │     │     └── .file-hint     - 可收折格式範本提示區塊（自動分辨選擇與填空，支援 .json/.csv/.txt）
+  │     │     └── .file-hint     - 可收折格式範本提示區塊（自動分辨選擇與填空，支援 .json/.csv/.txt），summary 箭頭保留左側內距
   │     │
   │     ├── #statsSection        - 獨立學習統計畫面：共用首頁 Matrix 背景，顯示正確率歷史圖表、最近紀錄與正式測驗摘要
   │     │
@@ -405,7 +405,8 @@
         cursor: pointer;
         color: #2c3e50;
         font-weight: 600;
-        list-style-position: outside;
+        list-style-position: inside;
+        padding-left: 8px;
         user-select: none;
     }
     .file-hint summary:hover { color: #2980b9; }
