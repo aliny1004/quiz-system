@@ -667,8 +667,9 @@
         inset: 0;
         width: 100vw;
         height: 100vh;
-        background: radial-gradient(circle at 18% 8%, rgba(46, 204, 113, 0.08), transparent 30%),
-                    linear-gradient(135deg, #eef2f7 0%, #e3f0e9 48%, #ddeaf6 100%);
+        background: radial-gradient(circle at 18% 8%, rgba(46, 204, 113, 0.055), transparent 30%),
+                    linear-gradient(135deg, #eef2f7 0%, #e6f1eb 48%, #e2ecf7 100%);
+        opacity: 0.84;
         z-index: 0;
         pointer-events: none;
     }
@@ -699,10 +700,10 @@
         margin: 22px auto;
         padding: 28px;
         color: #0f172a;
-        background: linear-gradient(180deg, rgba(255, 255, 255, 0.88), rgba(240, 253, 244, 0.82) 46%, rgba(248, 250, 252, 0.92));
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.76), rgba(244, 251, 247, 0.68) 46%, rgba(248, 250, 252, 0.8));
         border: 1px solid rgba(15, 23, 42, 0.12);
         border-top: 1px solid rgba(22, 163, 74, 0.48);
-        box-shadow: 0 10px 24px rgba(15, 23, 42, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.72), inset 0 0 0 1px rgba(255, 255, 255, 0.36);
+        box-shadow: 0 10px 24px rgba(15, 23, 42, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.72), inset 0 0 0 1px rgba(255, 255, 255, 0.36), inset 0 18px 42px rgba(255, 255, 255, 0.38);
     }
 
     body.home-active .management-section h1 {
@@ -722,10 +723,10 @@
 
     body.home-active .history-card,
     body.home-active .file-hint {
-        background: rgba(255, 255, 255, 0.78);
+        background: rgba(255, 255, 255, 0.7);
         border: 1px solid rgba(15, 23, 42, 0.1);
         border-radius: 8px;
-        box-shadow: 0 6px 14px rgba(15, 23, 42, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.65);
+        box-shadow: 0 6px 14px rgba(15, 23, 42, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.65), inset 0 12px 26px rgba(255, 255, 255, 0.3);
     }
 
     body.home-active .history-card {
@@ -820,12 +821,13 @@
     }
 
     body.dark-mode.home-active {
-        background: #030a12;
+        background: #01050b;
     }
 
     body.dark-mode.home-active .home-matrix-canvas {
-        background: radial-gradient(circle at 20% 10%, rgba(46, 204, 113, 0.1), transparent 28%),
-                    linear-gradient(135deg, #030814 0%, #07111f 48%, #03100b 100%);
+        background: radial-gradient(circle at 20% 10%, rgba(22, 101, 52, 0.045), transparent 30%),
+                    linear-gradient(135deg, #01040a 0%, #03101a 50%, #010806 100%);
+        opacity: 0.64;
     }
 
     body.dark-mode.home-active .exam-header {
@@ -844,9 +846,9 @@
 
     body.dark-mode.home-active .management-section {
         color: #e5f7ef;
-        background: linear-gradient(180deg, rgba(15, 23, 42, 0.9), rgba(8, 47, 73, 0.5) 46%, rgba(8, 18, 32, 0.94));
-        border: 1px solid rgba(148, 163, 184, 0.24);
-        border-top: 1px solid rgba(46, 204, 113, 0.58);
+        background: linear-gradient(180deg, rgba(8, 13, 24, 0.84), rgba(4, 20, 30, 0.58) 46%, rgba(5, 12, 22, 0.88));
+        border: 1px solid rgba(100, 116, 139, 0.2);
+        border-top: 1px solid rgba(34, 197, 94, 0.28);
         box-shadow: 0 10px 24px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.05), inset 0 0 0 1px rgba(255, 255, 255, 0.03);
     }
 
@@ -1803,15 +1805,17 @@
         const ctx = canvas.getContext('2d');
         const glyphs = '01{}[]<>/\\#$CEHOSCPCTIAroot';
         let columns = [];
-        let fontSize = 16;
+        let fontSize = 11.6;
+        let columnStep = 7;
         let lastFrameTime = 0;
         let resizeTimer = null;
 
         function resize() {
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
-            fontSize = window.innerWidth < 760 ? 13 : 16;
-            const count = Math.ceil(canvas.width / fontSize);
+            fontSize = window.innerWidth < 760 ? 9.6 : 11.6;
+            columnStep = Math.max(5.8, fontSize * 0.62);
+            const count = Math.ceil(canvas.width / columnStep);
             columns = Array.from({ length: count }, () => Math.random() * canvas.height / fontSize);
         }
 
@@ -1821,7 +1825,7 @@
                 return;
             }
 
-            const frameInterval = window.innerWidth < 760 ? 70 : 50;
+            const frameInterval = window.innerWidth < 760 ? 58 : 42;
             if (timestamp - lastFrameTime < frameInterval) {
                 requestAnimationFrame(draw);
                 return;
@@ -1829,25 +1833,43 @@
             lastFrameTime = timestamp;
 
             const isDarkHome = document.body.classList.contains('dark-mode');
-            ctx.fillStyle = isDarkHome ? 'rgba(3, 8, 20, 0.18)' : 'rgba(238, 242, 247, 0.16)';
+            ctx.fillStyle = isDarkHome ? 'rgba(1, 5, 11, 0.2)' : 'rgba(238, 242, 247, 0.18)';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
             ctx.font = `${fontSize}px Consolas, Monaco, monospace`;
-            ctx.shadowBlur = isDarkHome ? 3 : 1;
-            ctx.shadowColor = isDarkHome ? 'rgba(74, 222, 128, 0.22)' : 'rgba(22, 163, 74, 0.1)';
+            ctx.shadowBlur = isDarkHome ? 0.7 : 0.35;
+            ctx.shadowColor = isDarkHome ? 'rgba(34, 197, 94, 0.08)' : 'rgba(22, 163, 74, 0.05)';
 
             columns.forEach((y, index) => {
-                const shouldGlow = Math.random() > 0.82;
-                const char = glyphs[Math.floor(Math.random() * glyphs.length)];
-                const x = index * fontSize;
-                if (shouldGlow) {
-                    ctx.fillStyle = isDarkHome ? 'rgba(190, 255, 216, 0.78)' : 'rgba(4, 120, 87, 0.62)';
-                    ctx.fillText(char, x, y * fontSize);
+                const x = index * columnStep;
+                const trailLength = window.innerWidth < 760 ? 3 : 4;
+                const isLit = Math.random() > 0.46;
+                if (!isLit) {
+                    columns[index] = y + (window.innerWidth < 760 ? 0.78 : 0.9);
+                    return;
                 }
 
-                if (y * fontSize > canvas.height && Math.random() > 0.975) {
-                    columns[index] = 0;
+                for (let trail = 0; trail < trailLength; trail++) {
+                    const char = glyphs[Math.floor(Math.random() * glyphs.length)];
+                    const alpha = Math.max(0.04, 0.36 - trail * 0.09);
+                    const yPos = (y - trail) * fontSize;
+
+                    if (isDarkHome) {
+                        ctx.fillStyle = trail === 0
+                            ? 'rgba(132, 214, 160, 0.43)'
+                            : `rgba(58, 136, 90, ${alpha * 0.5})`;
+                    } else {
+                        ctx.fillStyle = trail === 0
+                            ? 'rgba(4, 120, 87, 0.56)'
+                            : `rgba(16, 120, 86, ${alpha * 0.78})`;
+                    }
+
+                    ctx.fillText(char, x, yPos);
+                }
+
+                if (y * fontSize > canvas.height + (trailLength * fontSize)) {
+                    columns[index] = Math.random() > 0.975 ? 0 : -Math.random() * 80;
                 } else {
-                    columns[index] = y + 0.55;
+                    columns[index] = y + (window.innerWidth < 760 ? 0.78 : 0.9);
                 }
             });
 
