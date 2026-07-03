@@ -12,8 +12,8 @@
 - 支援答案提示模式：點選選項後短暫提示正確答案
 - 支援指定出題數量與指定題號範圍
 - 支援作答計時器顯示/隱藏
-- 支援明暗模式切換
-- 支援首頁動態 Matrix 背景
+- 支援明暗模式切換，並以短暫過渡遮罩降低切換跳格感
+- 支援首頁動態 Matrix 背景，明暗切換時使用 canvas 內部補間降低跳色感
 - 支援自動捲動到下一題
 - 支援本次錯題再次測驗
 - 支援學習統計：正確率歷史、每題作答次數、答對率、最後作答日期
@@ -58,6 +58,8 @@ v11.0.0
 
 ```text
 修改 quiz.html
+同步更新 quiz.html 檔案最上方結構註解
+同步更新 README.md
 確認功能正常
 commit
 tag
@@ -86,6 +88,9 @@ push
 │   │   ├── 明暗模式切換器
 │   │   └── 作答計時器 #examTimer
 │   │
+│   ├── #themeTransitionOverlay
+│   │   └── 明暗模式切換過渡遮罩
+│   │
 │   ├── #managementSection
 │   │   ├── 首頁標題與說明
 │   │   ├── .history-card
@@ -100,6 +105,7 @@ push
 │   │       └── 可收折題庫格式說明
 │   │
 │   ├── #statsSection
+│   │   ├── 共用首頁 Matrix 背景
 │   │   ├── 正確率歷史圖表
 │   │   ├── 最近測驗紀錄
 │   │   └── 題庫學習統計摘要
@@ -134,7 +140,10 @@ push
     │   ├── bindSettingsControls()
     │   ├── bindTooltipControls()
     │   ├── applyThemeMode()
-    │   └── bindThemeModeControl()
+    │   ├── startThemeTransitionOverlay()
+    │   ├── bindThemeModeControl()
+    │   ├── initializeHomeMatrixBackground()
+    │   └── showHomeSection()
     │
     ├── 題庫快取與管理
     │   ├── initializeBuiltinQuizBanks()
@@ -180,8 +189,10 @@ push
 
 ## 維護規則
 
-- 重大結構修改時，同步更新 `README.md` 的架構圖
-- 平常只修改 `quiz.html`
-- 不在主分支新增 `quiz_v*.html` 版本檔
+- 只要新增或修改 `quiz.html` 的功能、畫面區塊、流程或主要函式，必須同步更新 `quiz.html` 檔案最上方的結構註解
+- 只要新增或修改功能、畫面區塊、流程或主要函式，必須同步更新 `README.md` 的功能說明、架構圖或維護說明
+- 平常只修改 `quiz.html`，HTML 主檔只能叫 `quiz.html`
+- 不在主分支新增 `quiz_v*.html`、`quiz_v12.html` 或其他版本 HTML 檔
 - 版本保存交給 Git tag 與 GitHub Release
 - Release 附件可放對應版本的 HTML 檔
+- 使用者說「定案」時，代表目前狀態要正式上傳並更新 Git：完成檢查、commit、tag、push，並依版本規則建立 GitHub Release
