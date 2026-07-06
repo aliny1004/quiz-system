@@ -9,6 +9,8 @@
   │     │
   │     ├── #themeTransitionOverlay - 明暗模式切換過渡遮罩：短暫覆蓋切換前色調，再淡出顯示切換後畫面
   │     │
+  │     ├── #accessSection       - 使用者訪問頁：輸入使用者名稱後寫入 Supabase，並回補該使用者雲端資料
+  │     │
   │     ├── #managementSection   - 管理區塊（首頁面板，跟隨網頁本身捲動）
   │     │     ├── .history-card  - 歷史紀錄卡片
   │     │     │     ├── .history-main-row - 題庫選單、上傳/刪除題庫 icon、開始測驗與學習統計按鈕；手機版工具 icon 固定在下拉選單右側
@@ -29,6 +31,7 @@
   │
   └── Script (邏輯控制)
         ├── 全域狀態與資料模型
+        │     ├── currentPqsUser              - 目前使用者名稱，用於 Supabase 題庫與學習紀錄分流
         │     ├── sourceQuizBank              - 原始題庫資料，保留完整順序與內容
         │     ├── quizBank                    - 本次測驗 session 題目清單，可被篩選或打亂
         │     ├── markedQuestions             - 追蹤本次測驗中被 Mark 的題號
@@ -37,13 +40,16 @@
         │     └── totalSeconds                - 累計作答秒數
         │
         ├── 系統事件生命週期與設定保存
-        │     ├── window.onload            - 初始化明暗模式、內建題庫、歷史題庫下拉選單、首頁 Matrix 背景、還原設定、綁定 checkbox、更新計時器顯示，並從 Supabase 回補雲端題庫
+        │     ├── window.onload            - 初始化明暗模式、內建題庫、歷史題庫下拉選單、首頁 Matrix 背景、訪問頁、還原設定、綁定 checkbox、更新計時器顯示
+        │     ├── submitAccessUser()       - 驗證使用者名稱，寫入 Supabase 使用者表，並進入首頁
+        │     ├── enterPqsUser()           - 設定目前使用者，回補 Supabase 題庫、統計、錯題與答對紀錄
         │     ├── getQuizSettings()        - 讀取首頁 checkbox 狀態並回傳設定物件
         │     ├── loadQuizSettings()       - 從 LocalStorage 還原使用者上次勾選狀態
         │     ├── saveQuizSettings()       - 將目前設定寫入 LocalStorage
         │     ├── bindSettingsControls()   - 監聽設定變更，並讓隱藏計時器即時生效
         │     ├── bindTooltipControls()    - 綁定 data-tooltip 通用提示；桌面 hover，手機長按
         │     ├── renderStatsPanel()       - 顯示正式測驗正確率歷史圖表與最近紀錄
+        │     ├── resetSelectedQuizStats() - 重置目前題庫的正確率歷史、每題統計與錯題紀錄，並同步刪除 Supabase 統計資料
         │     ├── updateTimerVisibility()  - 使用 visibility/opacity 隱藏計時器，避免 header 版面跳動
         │     ├── applyThemeMode()         - 套用正常/深色模式
         │     ├── startThemeTransitionOverlay() - 明暗切換時播放全頁淡出遮罩，降低即時重繪造成的跳格感
@@ -55,6 +61,7 @@
         ├── 題庫快取與管理函數
         │     ├── initializeBuiltinQuizBanks() - 將內建 EDRP 題庫寫入 LocalStorage，固定顯示在歷史題庫
         │     ├── updateHistoryDropdown()  - 撈取 LocalStorage 題庫紀錄並按時間排序更新下拉選單
+        │     ├── loadSupabaseUserDataToLocalStorage() - 從 Supabase 回補目前使用者的題庫、統計、錯題與答對紀錄到本機快取
         │     ├── loadSupabaseQuizBanksToLocalStorage() - 從 Supabase 題庫表回補雲端題庫到本機快取
         │     ├── syncQuizBankToSupabase() - 題庫上傳後背景同步至 Supabase
         │     └── safeDeleteHistory()      - 雙重確認後安全移除題庫快取紀錄，並同步刪除 Supabase 題庫
@@ -425,6 +432,121 @@
         word-break: break-all;
         font-family: Consolas, Monaco, monospace;
         color: #c7254e;
+    }
+
+    .access-section {
+        position: relative;
+        z-index: 2;
+        display: grid;
+        place-items: center;
+        width: min(100% - 32px, 560px);
+        min-height: 100vh;
+        margin: 0 auto;
+        padding: 32px 0;
+        box-sizing: border-box;
+    }
+    .access-panel {
+        width: 100%;
+        border: 1px solid rgba(148, 163, 184, 0.28);
+        border-top: 5px solid #16a085;
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.86);
+        box-shadow: 0 18px 42px rgba(15, 23, 42, 0.16);
+        padding: 30px;
+        box-sizing: border-box;
+    }
+    .access-kicker {
+        margin: 0 0 8px;
+        color: #16a085;
+        font-size: 13px;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+    }
+    .access-title {
+        margin: 0;
+        color: #0f172a;
+        text-align: left;
+        font-size: 32px;
+        line-height: 1.15;
+    }
+    .access-subtitle {
+        margin: 12px 0 24px;
+        color: #475569;
+        font-size: 15px;
+        line-height: 1.6;
+    }
+    .access-form {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 10px;
+        align-items: stretch;
+    }
+    .access-input {
+        min-width: 0;
+        border: 1px solid #cbd5e1;
+        border-radius: 6px;
+        padding: 12px 14px;
+        font-size: 16px;
+        color: #0f172a;
+        background: rgba(255, 255, 255, 0.94);
+        box-sizing: border-box;
+    }
+    .access-input:focus {
+        outline: none;
+        border-color: #16a085;
+        box-shadow: 0 0 0 3px rgba(22, 160, 133, 0.16);
+    }
+    .access-submit {
+        border: none;
+        border-radius: 6px;
+        padding: 0 22px;
+        background: #16a085;
+        color: #ffffff;
+        font-size: 15px;
+        font-weight: 800;
+        cursor: pointer;
+        box-shadow: 0 8px 18px rgba(22, 160, 133, 0.22);
+    }
+    .access-submit:hover {
+        background: #138a72;
+    }
+    .access-status {
+        min-height: 20px;
+        margin: 12px 0 0;
+        color: #64748b;
+        font-size: 13px;
+        line-height: 1.5;
+    }
+    body.access-active {
+        min-height: 100vh;
+        height: auto;
+        overflow-y: auto;
+        overflow-x: hidden;
+    }
+    body.access-active .exam-header,
+    body.access-active .exam-footer {
+        display: none;
+    }
+    body.access-active .home-matrix-canvas {
+        opacity: 1;
+    }
+    body.dark-mode .access-panel {
+        background: rgba(15, 23, 42, 0.86);
+        border-color: rgba(51, 65, 85, 0.84);
+        box-shadow: 0 18px 42px rgba(0, 0, 0, 0.34);
+    }
+    body.dark-mode .access-title {
+        color: #f8fafc;
+    }
+    body.dark-mode .access-subtitle,
+    body.dark-mode .access-status {
+        color: #cbd5e1;
+    }
+    body.dark-mode .access-input {
+        background: rgba(15, 23, 42, 0.94);
+        border-color: #475569;
+        color: #f8fafc;
     }
 
     /* 進入測驗後的雙欄版面切換 - 完美利用 Flex 填滿剩餘高度 */
@@ -935,6 +1057,19 @@
         border-color: rgba(148, 163, 184, 0.18);
     }
 
+    body.dark-mode.home-active .stats-reset-btn {
+        background-color: rgba(69, 10, 10, 0.72);
+        border-color: rgba(248, 113, 113, 0.44);
+        color: #fecaca;
+        box-shadow: none;
+    }
+
+    body.dark-mode.home-active .stats-reset-btn:hover {
+        background-color: rgba(127, 29, 29, 0.82);
+        border-color: #f87171;
+        color: #fee2e2;
+    }
+
     body.dark-mode.home-active .section-label {
         color: #7dd3a8;
     }
@@ -1113,6 +1248,23 @@
         margin: 0;
         font-size: 28px;
         color: #2c3e50;
+    }
+    .stats-reset-btn {
+        border: 1px solid #fca5a5;
+        border-radius: 6px;
+        background-color: rgba(254, 242, 242, 0.92);
+        color: #b91c1c;
+        padding: 7px 12px;
+        font-size: 13px;
+        font-weight: 800;
+        cursor: pointer;
+        white-space: nowrap;
+        box-shadow: 0 2px 6px rgba(185, 28, 28, 0.08);
+    }
+    .stats-reset-btn:hover {
+        background-color: #fee2e2;
+        border-color: #ef4444;
+        color: #991b1b;
     }
     .stats-chart {
         width: 100%;
@@ -1651,6 +1803,17 @@
             max-height: none;
             padding: 14px;
         }
+        .stats-panel-header {
+            align-items: flex-start;
+            gap: 8px;
+        }
+        .stats-panel-header h1 {
+            font-size: 24px;
+        }
+        .stats-reset-btn {
+            padding: 6px 9px;
+            font-size: 12px;
+        }
         .exam-footer {
             padding: 8px 12px calc(8px + env(safe-area-inset-bottom));
             gap: 8px;
@@ -1693,6 +1856,25 @@
     }
 
     @media (max-width: 520px) {
+        .access-section {
+            width: min(100% - 24px, 560px);
+            padding: 24px 0;
+        }
+        .access-panel {
+            padding: 22px;
+        }
+        .access-title {
+            font-size: 26px;
+        }
+        .access-form {
+            grid-template-columns: 1fr;
+        }
+        .access-submit {
+            min-height: 44px;
+        }
+        body.home-active:not(.quiz-active) .exam-header .proctor-status {
+            display: none;
+        }
         .exam-header {
             column-gap: 6px;
         }
@@ -1754,6 +1936,19 @@
 <canvas id="homeMatrixCanvas" class="home-matrix-canvas" aria-hidden="true"></canvas>
 <div id="themeTransitionOverlay" class="theme-transition-overlay" aria-hidden="true"></div>
 
+<div id="accessSection" class="access-section" translate="no">
+    <div class="access-panel">
+        <p class="access-kicker">PQS Cloud</p>
+        <h1 class="access-title">選擇使用者</h1>
+        <p class="access-subtitle">輸入名稱後進入題庫控制台，系統會載入該使用者的題庫、錯題與學習統計。</p>
+        <form class="access-form" onsubmit="submitAccessUser(event)">
+            <input type="text" id="accessUserInput" class="access-input" autocomplete="username" maxlength="40" placeholder="使用者名稱" aria-label="使用者名稱">
+            <button type="submit" class="access-submit">進入</button>
+        </form>
+        <p id="accessStatus" class="access-status" aria-live="polite"></p>
+    </div>
+</div>
+
 <div id="managementSection" class="management-section">
     <h1> 練習測驗系統 </h1>
     <p class="home-subtitle" translate="no">題庫載入、測驗模式與複習設定集中管理</p>
@@ -1764,7 +1959,7 @@
         <!-- 第一層核心動線：選單 ➔ 上傳/刪除題庫工具 ➔ 開始測驗 ➔ 學習統計 -->
         <div class="history-main-row">
             <select id="historySelect">
-                <option value="">-- 請選擇過去上傳過的題庫 --</option>
+                <option value="">-- 請選擇題庫 --</option>
             </select>
 
             <!-- 題庫上傳工具：外觀與垃圾桶一致，但 hover 使用非破壞性的藍色提示 -->
@@ -1777,7 +1972,7 @@
             </button>
 
             <!-- 刪除目前選取題庫：保留危險操作的紅色 hover 提示 -->
-            <button type="button" class="btn-trash-delete" onclick="safeDeleteHistory()" title="刪除此紀錄" aria-label="刪除此紀錄">🗑</button>
+            <button type="button" class="btn-trash-delete" onclick="safeDeleteHistory()" title="刪除題庫" aria-label="刪除題庫">🗑</button>
             
             <!-- 藍色開始測驗按鈕 -->
             <button type="button" class="btn-start-exam" onclick="customStartQuiz()">開始測驗</button>
@@ -1861,6 +2056,7 @@
     <div id="statsPanel" class="stats-panel">
         <div class="stats-panel-header">
             <h1>學習統計</h1>
+            <button type="button" class="stats-reset-btn" onclick="resetSelectedQuizStats()">重置統計</button>
         </div>
         <div id="statsPanelContent"></div>
     </div>
@@ -1932,6 +2128,7 @@
     const QUIZ_ACCURACY_HISTORY_STORAGE_KEY = 'quiz_sys_accuracy_history';
     const QUIZ_QUESTION_STATS_STORAGE_KEY = 'quiz_sys_question_stats';
     const QUIZ_WRONG_RETRY_PREFERENCE_STORAGE_KEY = 'quiz_sys_wrong_retry_preference';
+    const PQS_CURRENT_USER_STORAGE_KEY = 'quiz_sys_current_user';
     const BUILTIN_EDRP_STORAGE_KEY = 'quiz_sys_EDRP.csv';
     const SUPABASE_PROJECT_URL = window.PQS_ENV?.SUPABASE_PROJECT_URL || '';
     const SUPABASE_ANON_API_KEY = window.PQS_ENV?.SUPABASE_ANON_API_KEY || '';
@@ -1945,7 +2142,8 @@
         QUIZ_WRONG_HISTORY_STORAGE_KEY,
         QUIZ_ACCURACY_HISTORY_STORAGE_KEY,
         QUIZ_QUESTION_STATS_STORAGE_KEY,
-        QUIZ_WRONG_RETRY_PREFERENCE_STORAGE_KEY
+        QUIZ_WRONG_RETRY_PREFERENCE_STORAGE_KEY,
+        PQS_CURRENT_USER_STORAGE_KEY
     ]);
 
     // sourceQuizBank 永遠保存完整原始題庫；quizBank 則是套用設定後的本次測驗清單。
@@ -1962,6 +2160,7 @@
     let currentSessionMode = 'exam'; // 未來複習模式可設為 review，統計記錄會自動停用
     let isExamInProgress = false;
     let correctlyAnsweredQuestions = new Set(JSON.parse(localStorage.getItem(QUIZ_CORRECT_STORAGE_KEY) || '[]'));
+    let currentPqsUser = localStorage.getItem(PQS_CURRENT_USER_STORAGE_KEY) || '';
 
     function isSupabaseEnabled() {
         return Boolean(SUPABASE_REST_URL && SUPABASE_ANON_API_KEY);
@@ -1996,13 +2195,38 @@
         promise.catch(error => console.warn('[PQS Supabase sync]', error.message));
     }
 
-    function syncQuizBankToSupabase(storageKey, displayName, questions, timestamp) {
-        if (!storageKey || !Array.isArray(questions)) return null;
+    function normalizePqsUsername(value) {
+        return String(value || '')
+            .trim()
+            .replace(/\s+/g, ' ')
+            .slice(0, 40);
+    }
 
-        return supabaseRequest('pqs_quiz_banks?on_conflict=storage_key', {
+    function getSupabaseUserParam() {
+        return encodeURIComponent(currentPqsUser || 'default');
+    }
+
+    function syncCurrentUserToSupabase() {
+        if (!currentPqsUser) return null;
+        return supabaseRequest('pqs_users?on_conflict=username', {
             method: 'POST',
             headers: { Prefer: 'resolution=merge-duplicates' },
             body: JSON.stringify({
+                username: currentPqsUser,
+                display_name: currentPqsUser,
+                last_seen_at: new Date().toISOString()
+            })
+        });
+    }
+
+    function syncQuizBankToSupabase(storageKey, displayName, questions, timestamp) {
+        if (!storageKey || !Array.isArray(questions)) return null;
+
+        return supabaseRequest('pqs_quiz_banks?on_conflict=username,storage_key', {
+            method: 'POST',
+            headers: { Prefer: 'resolution=merge-duplicates' },
+            body: JSON.stringify({
+                username: currentPqsUser || 'default',
                 storage_key: storageKey,
                 display_name: displayName,
                 question_count: questions.length,
@@ -2015,18 +2239,39 @@
 
     function deleteQuizBankFromSupabase(storageKey) {
         if (!storageKey || storageKey === BUILTIN_EDRP_STORAGE_KEY) return null;
-        return supabaseRequest(`pqs_quiz_banks?storage_key=eq.${encodeURIComponent(storageKey)}`, {
+        return supabaseRequest(`pqs_quiz_banks?username=eq.${getSupabaseUserParam()}&storage_key=eq.${encodeURIComponent(storageKey)}`, {
             method: 'DELETE',
             headers: { Prefer: 'return=minimal' }
         });
     }
 
+    function deleteQuizStatsFromSupabase(storageKey) {
+        if (!storageKey) return null;
+        const quizParam = encodeURIComponent(storageKey);
+        const userParam = getSupabaseUserParam();
+        return Promise.all([
+            supabaseRequest(`pqs_accuracy_history?username=eq.${userParam}&quiz_storage_key=eq.${quizParam}`, {
+                method: 'DELETE',
+                headers: { Prefer: 'return=minimal' }
+            }),
+            supabaseRequest(`pqs_question_stats?username=eq.${userParam}&quiz_storage_key=eq.${quizParam}`, {
+                method: 'DELETE',
+                headers: { Prefer: 'return=minimal' }
+            }),
+            supabaseRequest(`pqs_wrong_history?username=eq.${userParam}&quiz_storage_key=eq.${quizParam}`, {
+                method: 'DELETE',
+                headers: { Prefer: 'return=minimal' }
+            })
+        ]);
+    }
+
     function syncCorrectAnswerToSupabase(questionId) {
         if (!questionId) return null;
-        return supabaseRequest('pqs_correct_questions?on_conflict=question_id', {
+        return supabaseRequest('pqs_correct_questions?on_conflict=username,question_id', {
             method: 'POST',
             headers: { Prefer: 'resolution=merge-duplicates' },
             body: JSON.stringify({
+                username: currentPqsUser || 'default',
                 question_id: String(questionId),
                 marked_at: new Date().toISOString()
             })
@@ -2039,6 +2284,7 @@
             method: 'POST',
             headers: { Prefer: 'return=minimal' },
             body: JSON.stringify({
+                username: currentPqsUser || 'default',
                 quiz_storage_key: quizStorageKey,
                 recorded_at: new Date(recordedAt || Date.now()).toISOString(),
                 wrong_ids: [...new Set((wrongIds || []).map(id => String(id)))]
@@ -2051,6 +2297,7 @@
 
         const answeredStats = Object.entries(quizStats || {})
             .map(([questionId, stats]) => ({
+                username: currentPqsUser || 'default',
                 quiz_storage_key: quizStorageKey,
                 question_id: questionId,
                 attempts: stats.attempts || 0,
@@ -2064,6 +2311,7 @@
             method: 'POST',
             headers: { Prefer: 'return=minimal' },
             body: JSON.stringify({
+                username: currentPqsUser || 'default',
                 quiz_storage_key: quizStorageKey,
                 completed_at: new Date(completedAt).toISOString(),
                 correct_count: historyRecord.correctCount,
@@ -2075,7 +2323,7 @@
         });
 
         const writeQuestionStats = answeredStats.length
-            ? supabaseRequest('pqs_question_stats?on_conflict=quiz_storage_key,question_id', {
+            ? supabaseRequest('pqs_question_stats?on_conflict=username,quiz_storage_key,question_id', {
                 method: 'POST',
                 headers: { Prefer: 'resolution=merge-duplicates' },
                 body: JSON.stringify(answeredStats)
@@ -2088,7 +2336,7 @@
     async function loadSupabaseQuizBanksToLocalStorage() {
         if (!isSupabaseEnabled()) return;
 
-        const rows = await supabaseRequest('pqs_quiz_banks?select=storage_key,display_name,uploaded_at,questions&order=uploaded_at.desc');
+        const rows = await supabaseRequest(`pqs_quiz_banks?username=eq.${getSupabaseUserParam()}&select=storage_key,display_name,uploaded_at,questions&order=uploaded_at.desc`);
         if (!Array.isArray(rows)) return;
 
         const metaData = JSON.parse(localStorage.getItem(QUIZ_METADATA_STORAGE_KEY) || '{}');
@@ -2102,6 +2350,67 @@
         updateQuestionScopeHint();
     }
 
+    async function loadSupabaseUserDataToLocalStorage() {
+        if (!isSupabaseEnabled() || !currentPqsUser) return;
+
+        await loadSupabaseQuizBanksToLocalStorage();
+
+        const userParam = getSupabaseUserParam();
+        const [accuracyRows, questionStatRows, wrongRows, correctRows] = await Promise.all([
+            supabaseRequest(`pqs_accuracy_history?username=eq.${userParam}&select=quiz_storage_key,completed_at,correct_count,total_count,accuracy_rate,duration_seconds,mode&order=completed_at.desc`),
+            supabaseRequest(`pqs_question_stats?username=eq.${userParam}&select=quiz_storage_key,question_id,attempts,correct,wrong,last_answered_at`),
+            supabaseRequest(`pqs_wrong_history?username=eq.${userParam}&select=quiz_storage_key,recorded_at,wrong_ids&order=recorded_at.desc`),
+            supabaseRequest(`pqs_correct_questions?username=eq.${userParam}&select=question_id`)
+        ]);
+
+        const accuracyStore = {};
+        (accuracyRows || []).forEach(row => {
+            if (!row.quiz_storage_key) return;
+            const records = accuracyStore[row.quiz_storage_key] || [];
+            records.push({
+                completedAt: Date.parse(row.completed_at),
+                correctCount: row.correct_count || 0,
+                totalCount: row.total_count || 0,
+                accuracyRate: row.accuracy_rate || 0,
+                durationSeconds: row.duration_seconds || 0,
+                mode: row.mode || 'exam'
+            });
+            accuracyStore[row.quiz_storage_key] = records.slice(0, 120);
+        });
+        saveAccuracyHistoryStore(accuracyStore);
+
+        const questionStatsStore = {};
+        (questionStatRows || []).forEach(row => {
+            if (!row.quiz_storage_key || !row.question_id) return;
+            const quizStats = questionStatsStore[row.quiz_storage_key] || {};
+            quizStats[row.question_id] = {
+                attempts: row.attempts || 0,
+                correct: row.correct || 0,
+                wrong: row.wrong || 0,
+                lastAnsweredAt: row.last_answered_at ? Date.parse(row.last_answered_at) : null
+            };
+            questionStatsStore[row.quiz_storage_key] = quizStats;
+        });
+        saveQuestionStatsStore(questionStatsStore);
+
+        const wrongHistoryStore = {};
+        (wrongRows || []).forEach(row => {
+            if (!row.quiz_storage_key) return;
+            const records = wrongHistoryStore[row.quiz_storage_key] || [];
+            records.push({
+                completedAt: Date.parse(row.recorded_at),
+                wrongIds: Array.isArray(row.wrong_ids) ? row.wrong_ids.map(id => String(id)) : []
+            });
+            wrongHistoryStore[row.quiz_storage_key] = records.slice(0, 5);
+        });
+        saveWrongHistoryStore(wrongHistoryStore);
+
+        correctlyAnsweredQuestions = new Set((correctRows || []).map(row => String(row.question_id)).filter(Boolean));
+        localStorage.setItem(QUIZ_CORRECT_STORAGE_KEY, JSON.stringify([...correctlyAnsweredQuestions]));
+        renderStatsPanel();
+        updateQuestionScopeHint();
+    }
+
     function initializeBuiltinQuizBanks() {
         localStorage.setItem(BUILTIN_EDRP_STORAGE_KEY, JSON.stringify(BUILTIN_EDRP_QUIZ_BANK));
 
@@ -2110,12 +2419,55 @@
         localStorage.setItem(QUIZ_METADATA_STORAGE_KEY, JSON.stringify(metaData));
     }
 
+    async function enterPqsUser(username) {
+        const normalizedName = normalizePqsUsername(username);
+        if (!normalizedName) return;
+
+        currentPqsUser = normalizedName;
+        localStorage.setItem(PQS_CURRENT_USER_STORAGE_KEY, currentPqsUser);
+
+        const status = document.getElementById('accessStatus');
+        if (status) status.textContent = '正在載入雲端資料...';
+
+        initializeBuiltinQuizBanks();
+        updateHistoryDropdown();
+        try {
+            await syncCurrentUserToSupabase();
+            await syncQuizBankToSupabase(BUILTIN_EDRP_STORAGE_KEY, 'EDRP.csv', BUILTIN_EDRP_QUIZ_BANK, Date.now());
+            await loadSupabaseUserDataToLocalStorage();
+        } catch (error) {
+            console.warn('[PQS Supabase sync]', error.message);
+            if (status) status.textContent = '雲端同步暫時失敗，已使用本機資料進入。';
+        }
+
+        const accessSection = document.getElementById('accessSection');
+        const managementSection = document.getElementById('managementSection');
+        if (accessSection) accessSection.style.display = 'none';
+        if (managementSection) managementSection.style.display = 'block';
+        document.body.classList.remove('access-active');
+        setHomeBackgroundVisible(true);
+        updateQuestionScopeHint();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function submitAccessUser(event) {
+        if (event) event.preventDefault();
+        const input = document.getElementById('accessUserInput');
+        const status = document.getElementById('accessStatus');
+        const username = normalizePqsUsername(input?.value);
+
+        if (!username) {
+            if (status) status.textContent = '請先輸入使用者名稱。';
+            if (input) input.focus();
+            return;
+        }
+
+        enterPqsUser(username);
+    }
+
     window.onload = function() {
         loadThemeMode();
-        initializeBuiltinQuizBanks();
-        syncSupabase(syncQuizBankToSupabase(BUILTIN_EDRP_STORAGE_KEY, 'EDRP.csv', BUILTIN_EDRP_QUIZ_BANK, Date.now()));
         updateHistoryDropdown();
-        syncSupabase(loadSupabaseQuizBanksToLocalStorage());
         loadQuizSettings();
         loadWrongRetryPreference();
         bindSettingsControls();
@@ -2126,6 +2478,15 @@
         initializeHomeMatrixBackground();
         bindDynamicChromeControls();
         setHomeBackgroundVisible(true);
+
+        const accessSection = document.getElementById('accessSection');
+        const managementSection = document.getElementById('managementSection');
+        const userInput = document.getElementById('accessUserInput');
+        if (managementSection) managementSection.style.display = 'none';
+        if (accessSection) accessSection.style.display = 'grid';
+        if (userInput && currentPqsUser) userInput.value = currentPqsUser;
+        document.body.classList.add('access-active');
+        if (userInput) userInput.focus();
     };
 
     function bindDynamicChromeControls() {
@@ -2706,6 +3067,39 @@
         `;
     }
 
+    function resetSelectedQuizStats() {
+        const select = document.getElementById('historySelect');
+        const quizStorageKey = select?.value || currentQuizStorageKey || '';
+        if (!quizStorageKey) {
+            alert('請先選擇一個題庫。');
+            return;
+        }
+
+        const displayName = getQuizDisplayName(quizStorageKey);
+        const firstCheck = confirm(`確定要重置「${displayName}」的學習統計嗎？\n\n這會清除正確率歷史、每題作答統計與錯題紀錄。`);
+        if (!firstCheck) return;
+
+        const secondCheck = confirm('最後確認：重置後該題庫的學習統計無法復原。');
+        if (!secondCheck) return;
+
+        const accuracyHistoryStore = getAccuracyHistoryStore();
+        delete accuracyHistoryStore[quizStorageKey];
+        saveAccuracyHistoryStore(accuracyHistoryStore);
+
+        const questionStatsStore = getQuestionStatsStore();
+        delete questionStatsStore[quizStorageKey];
+        saveQuestionStatsStore(questionStatsStore);
+
+        const wrongHistoryStore = getWrongHistoryStore();
+        delete wrongHistoryStore[quizStorageKey];
+        saveWrongHistoryStore(wrongHistoryStore);
+
+        syncSupabase(deleteQuizStatsFromSupabase(quizStorageKey));
+        refreshCurrentQuestionStatsBadges();
+        renderStatsPanel();
+        alert('該題庫的學習統計已重置。');
+    }
+
     function toggleStatsPanel(forceShow) {
         const statsSection = document.getElementById('statsSection');
         const managementSection = document.getElementById('managementSection');
@@ -2724,8 +3118,7 @@
 
             const historyRecords = getAccuracyHistoryStore()[quizStorageKey] || [];
             if (historyRecords.length === 0) {
-                alert('這個題庫目前尚無學習統計。');
-                return;
+                alert('這個題庫目前尚無考試紀錄，將顯示空白統計頁。');
             }
 
             renderStatsPanel();
@@ -3062,7 +3455,7 @@
     function updateHistoryDropdown() {
         const select = document.getElementById('historySelect');
         if(!select) return;
-        select.innerHTML = '<option value="">-- 請選擇過去上傳過的題庫 --</option>';
+        select.innerHTML = '<option value="">-- 請選擇題庫 --</option>';
         
         let metaData = JSON.parse(localStorage.getItem(QUIZ_METADATA_STORAGE_KEY) || '{}');
         let items = [];
