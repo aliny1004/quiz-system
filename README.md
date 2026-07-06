@@ -34,7 +34,10 @@
 
 ```text
 README.md
+.gitignore
 index.html
+package.json
+vercel.json
 ```
 
 `v13.0.0` 起正式改為線上版入口檔 `index.html`。歷史版本不再以 `quiz_v2.html`、`quiz_v3.html` 這種檔案形式保留在主分支。舊版會透過 Git tag 與 GitHub Release 保存，例如：
@@ -48,13 +51,46 @@ v13.0.0
 
 平常只修改 `index.html`。後續若使用者明確要求串接 Supabase 或拆分多個 HTML / JS / API 檔案，再依新架構同步更新此檔案策略。
 
+## 線上版部署規劃
+
+- Vercel 專案名稱：`pqs`
+- 正式 Vercel 網域：`pqs-quiz.vercel.app`（`pqs.vercel.app` 已被占用）
+- 專案縮寫：`PQS`
+- 目前狀態：單檔 `index.html` 靜態前端，先完成 GitHub + Vercel 線上版基礎
+- 後續狀態：使用者明確下令後，再串接 Supabase，並拆分為多個 HTML / JS / API 檔案
+
+未來結構規劃：
+
+```text
+quiz-system/
+├── public/
+│   ├── index.html
+│   ├── 其他各種頁.html
+│   └── quiz.html
+├── api/
+│   └── index.js
+├── package.json
+└── vercel.json
+```
+
+未來拆分後，`public/index.html` 作為首頁，考試頁預計使用 `/quiz` 路由；`api/index.js` 作為 Vercel Serverless Function，負責連接 Supabase 與處理後端邏輯。
+
 ## 版本規則
 
 - 小修正：`v11.0.1`、`v11.0.2`
 - 中型功能或重要改善：`v11.1.0`
 - 階段性大版本：`v12.0.0`、`v13.0.0`
+- 線上版設定與部署改善：`v13.1.0`
 
 ## 更新紀錄
+
+### v13.1.0
+
+- 將 Vercel 專案正式命名為 `pqs`
+- 新增 `package.json` 與 `vercel.json`，建立線上版部署基礎設定
+- 新增 `.gitignore`，避免提交 Vercel 本機連結與環境變數檔案
+- 正式 Vercel 網域設定為 `pqs-quiz.vercel.app`（`pqs.vercel.app` 已被占用）
+- 補充 GitHub + Vercel + Supabase 未來拆分結構規劃
 
 ### v13.0.0
 
