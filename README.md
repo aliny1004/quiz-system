@@ -1,6 +1,6 @@
 # 練習測驗系統
 
-這是一個單檔式 HTML 練習測驗系統，適合用來整理、匯入與練習資安證照或大型題庫，例如 EDRP、CEH、CTIA、OSCP 等。專案目前以 `quiz.html` 作為最新版主程式，直接用瀏覽器開啟即可使用，不需要後端伺服器。
+這是一個單檔式 HTML 練習測驗系統，適合用來整理、匯入與練習資安證照或大型題庫，例如 EDRP、CEH、CTIA、OSCP 等。專案自 `v13.0.0` 起以 `index.html` 作為 Vercel 線上版入口，目前仍維持單檔前端架構，後續再依版本迭代串接 Supabase 與拆分多檔結構。
 
 ## 主要功能
 
@@ -22,7 +22,7 @@
 
 ## 使用方式
 
-1. 開啟 `quiz.html`
+1. 開啟 `index.html`，或使用 Vercel 部署後的線上網址
 2. 從歷史題庫選擇既有題庫，或上傳 `.json`、`.csv`、`.txt` 題庫
 3. 設定測驗模式與出題範圍
 4. 點擊「開始測驗」
@@ -34,27 +34,33 @@
 
 ```text
 README.md
-quiz.html
+index.html
 ```
 
-歷史版本不再以 `quiz_v2.html`、`quiz_v3.html` 這種檔案形式保留在主分支。舊版會透過 Git tag 與 GitHub Release 保存，例如：
+`v13.0.0` 起正式改為線上版入口檔 `index.html`。歷史版本不再以 `quiz_v2.html`、`quiz_v3.html` 這種檔案形式保留在主分支。舊版會透過 Git tag 與 GitHub Release 保存，例如：
 
 ```text
 v1.0.0
 v2.0.0
 ...
-v11.0.0
+v13.0.0
 ```
 
-平常只修改 `quiz.html`。
+平常只修改 `index.html`。後續若使用者明確要求串接 Supabase 或拆分多個 HTML / JS / API 檔案，再依新架構同步更新此檔案策略。
 
 ## 版本規則
 
 - 小修正：`v11.0.1`、`v11.0.2`
 - 中型功能或重要改善：`v11.1.0`
-- 階段性大版本：`v12.0.0`
+- 階段性大版本：`v12.0.0`、`v13.0.0`
 
 ## 更新紀錄
+
+### v13.0.0
+
+- 將正式線上版入口由 `quiz.html` 改為 `index.html`，以符合 Vercel 靜態網站預設入口
+- 目前維持單檔前端架構，先完成 GitHub + Vercel 線上版部署基礎
+- Supabase 資料庫串接、多檔 HTML / JS / API 拆分與更完整後端結構保留至後續版本迭代
 
 ### v12.1.1
 
@@ -72,8 +78,8 @@ v11.0.0
 建議流程：
 
 ```text
-修改 quiz.html
-同步更新 quiz.html 檔案最上方結構註解
+修改 index.html
+同步更新 index.html 檔案最上方結構註解
 同步更新 README.md
 確認功能正常
 commit
@@ -84,7 +90,7 @@ push
 
 ## 架構圖
 
-此架構圖會跟隨 `quiz.html` 的重大結構更新同步維護，用來快速理解畫面區塊與主要函式責任。
+此架構圖會跟隨 `index.html` 的重大結構更新同步維護，用來快速理解畫面區塊與主要函式責任。
 
 ```text
 練習測驗系統
@@ -207,10 +213,10 @@ push
 
 ## 維護規則
 
-- 只要新增或修改 `quiz.html` 的功能、畫面區塊、流程或主要函式，必須同步更新 `quiz.html` 檔案最上方的結構註解
+- 只要新增或修改 `index.html` 的功能、畫面區塊、流程或主要函式，必須同步更新 `index.html` 檔案最上方的結構註解
 - 只要新增或修改功能、畫面區塊、流程或主要函式，必須同步更新 `README.md` 的功能說明、架構圖或維護說明
-- 平常只修改 `quiz.html`，HTML 主檔只能叫 `quiz.html`
-- 不在主分支新增 `quiz_v*.html`、`quiz_v12.html` 或其他版本 HTML 檔
+- `v13.0.0` 起平常只修改 `index.html`，線上入口 HTML 主檔只能叫 `index.html`
+- 不在主分支新增 `quiz_v*.html`、`quiz_v12.html` 或其他版本 HTML 檔；只有在使用者明確要求串接資料庫或拆分多檔架構時，才新增 HTML / JS / API 等結構檔
 - 版本保存交給 Git tag 與 GitHub Release
 - Release 附件可放對應版本的 HTML 檔
 - 使用者說「定案」時，代表目前狀態要正式上傳並更新 Git：完成檢查、commit、tag、push，並依版本規則建立 GitHub Release
