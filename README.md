@@ -1,12 +1,14 @@
 # 練習測驗系統
 
-這是一個單檔式 HTML 練習測驗系統，適合用來整理、匯入與練習資安證照或大型題庫，例如 EDRP、CEH、CTIA、OSCP 等。專案自 `v13.0.0` 起以 `index.html` 作為 Vercel 線上版入口，目前仍維持單檔前端架構，後續再依版本迭代串接 Supabase 與拆分多檔結構。
+這是一個單檔式 HTML 練習測驗系統，適合用來整理、匯入與練習資安證照或大型題庫，例如 EDRP、CEH、CTIA、OSCP 等。專案自 `v13.0.0` 起以 `index.html` 作為 Vercel 線上版入口，目前主頁已移至 `public/index.html`，並先接入 Supabase 題庫與學習統計同步；後續再依版本迭代拆分多個 HTML / JS / API 結構。
+
+**正式線上版：[`https://pqs-quiz.vercel.app`](https://pqs-quiz.vercel.app)**
 
 ## 主要功能
 
 - 支援 `.json`、`.csv`、`.txt` 題庫匯入
 - 自動分辨選擇題與填空題
-- 歷史題庫保存在 LocalStorage，可從下拉選單重新載入
+- 歷史題庫保存在 LocalStorage，並可背景同步至 Supabase
 - 支援打亂題目、打亂選項、隱藏已答對題目
 - 支援錯題模式：只考近五次測驗中答錯過的題目
 - 支援答案提示模式：點選選項後短暫提示正確答案
@@ -16,13 +18,13 @@
 - 支援首頁動態 Matrix 背景，明暗切換時使用 canvas 內部補間降低跳色感
 - 支援自動捲動到下一題
 - 支援本次錯題再次測驗
-- 支援學習統計：正確率歷史、每題作答次數、答對率、最後作答日期
+- 支援學習統計：正確率歷史、每題作答次數、答對率、最後作答日期，並可同步至 Supabase
 - 支援手機與桌面自適應排版
 - 支援 Git tag / GitHub release 版本管理
 
 ## 使用方式
 
-1. 開啟 `index.html`，或使用 Vercel 部署後的線上網址
+1. 開啟 `public/index.html`，或使用 Vercel 部署後的線上網址
 2. 從歷史題庫選擇既有題庫，或上傳 `.json`、`.csv`、`.txt` 題庫
 3. 設定測驗模式與出題範圍
 4. 點擊「開始測驗」
@@ -35,12 +37,14 @@
 ```text
 README.md
 .gitignore
-index.html
+public/index.html
+scripts/generate-env.js
+supabase/migrations/
 package.json
 vercel.json
 ```
 
-`v13.0.0` 起正式改為線上版入口檔 `index.html`。歷史版本不再以 `quiz_v2.html`、`quiz_v3.html` 這種檔案形式保留在主分支。舊版會透過 Git tag 與 GitHub Release 保存，例如：
+`v13.0.0` 起正式改為線上版入口檔 `index.html`；`v13.2.0` 起配合 Vercel 靜態輸出目錄，正式入口檔放在 `public/index.html`。歷史版本不再以 `quiz_v2.html`、`quiz_v3.html` 這種檔案形式保留在主分支。舊版會透過 Git tag 與 GitHub Release 保存，例如：
 
 ```text
 v1.0.0
@@ -49,17 +53,17 @@ v2.0.0
 v13.0.0
 ```
 
-平常只修改 `index.html`。後續若使用者明確要求串接 Supabase 或拆分多個 HTML / JS / API 檔案，再依新架構同步更新此檔案策略。
+平常只修改 `public/index.html`。後續若使用者明確要求拆分多個 HTML / JS / API 檔案，再依新架構同步更新此檔案策略。
 
 ## 線上版部署規劃
 
 - Vercel 專案名稱：`pqs`
 - 正式 Vercel 網域：`pqs-quiz.vercel.app`（`pqs.vercel.app` 已被占用）
 - 專案縮寫：`PQS`
-- 目前狀態：單檔 `index.html` 靜態前端，先完成 GitHub + Vercel 線上版基礎
-- 後續狀態：使用者明確下令後，再串接 Supabase，並拆分為多個 HTML / JS / API 檔案
+- 目前狀態：單檔 `public/index.html` 靜態前端，已完成 GitHub + Vercel 線上版基礎，並接入 Supabase 題庫與學習統計同步
+- 後續狀態：使用者明確下令後，再拆分為多個 HTML / JS / API 檔案
 
-未來結構規劃：
+目前與未來結構規劃：
 
 ```text
 quiz-system/
@@ -69,11 +73,15 @@ quiz-system/
 │   └── quiz.html
 ├── api/
 │   └── index.js
+├── scripts/
+│   └── generate-env.js
+├── supabase/
+│   └── migrations/
 ├── package.json
 └── vercel.json
 ```
 
-未來拆分後，`public/index.html` 作為首頁，考試頁預計使用 `/quiz` 路由；`api/index.js` 作為 Vercel Serverless Function，負責連接 Supabase 與處理後端邏輯。
+目前 `public/index.html` 作為首頁與測驗主頁，Supabase 先由前端 REST API 進行題庫與統計同步；未來拆分後，考試頁預計使用 `/quiz` 路由，`api/index.js` 作為 Vercel Serverless Function，負責連接 Supabase 與處理後端邏輯。
 
 ## 版本規則
 
@@ -81,8 +89,16 @@ quiz-system/
 - 中型功能或重要改善：`v11.1.0`
 - 階段性大版本：`v12.0.0`、`v13.0.0`
 - 線上版設定與部署改善：`v13.1.0`
+- Supabase 同步與 Vercel public 輸出調整：`v13.2.0`
 
 ## 更新紀錄
+
+### v13.2.0
+
+- 將正式入口檔移至 `public/index.html`，配合 Vercel 靜態輸出目錄
+- 新增 Supabase migration，建立題庫、答對紀錄、錯題歷史、正確率歷史與每題統計資料表
+- 新增 `scripts/generate-env.js`，部署時產生前端可讀取的 Supabase 環境設定
+- 題庫上傳、刪除、答對紀錄、錯題紀錄與學習統計會在保留 LocalStorage 的同時背景同步至 Supabase
 
 ### v13.1.0
 
@@ -114,8 +130,8 @@ quiz-system/
 建議流程：
 
 ```text
-修改 index.html
-同步更新 index.html 檔案最上方結構註解
+修改 public/index.html
+同步更新 public/index.html 檔案最上方結構註解
 同步更新 README.md
 確認功能正常
 commit
@@ -126,7 +142,7 @@ push
 
 ## 架構圖
 
-此架構圖會跟隨 `index.html` 的重大結構更新同步維護，用來快速理解畫面區塊與主要函式責任。
+此架構圖會跟隨 `public/index.html` 的重大結構更新同步維護，用來快速理解畫面區塊與主要函式責任。
 
 ```text
 練習測驗系統
@@ -249,9 +265,9 @@ push
 
 ## 維護規則
 
-- 只要新增或修改 `index.html` 的功能、畫面區塊、流程或主要函式，必須同步更新 `index.html` 檔案最上方的結構註解
+- 只要新增或修改 `public/index.html` 的功能、畫面區塊、流程或主要函式，必須同步更新 `public/index.html` 檔案最上方的結構註解
 - 只要新增或修改功能、畫面區塊、流程或主要函式，必須同步更新 `README.md` 的功能說明、架構圖或維護說明
-- `v13.0.0` 起平常只修改 `index.html`，線上入口 HTML 主檔只能叫 `index.html`
+- `v13.0.0` 起線上入口 HTML 主檔只能叫 `index.html`；`v13.2.0` 起入口檔路徑為 `public/index.html`
 - 不在主分支新增 `quiz_v*.html`、`quiz_v12.html` 或其他版本 HTML 檔；只有在使用者明確要求串接資料庫或拆分多檔架構時，才新增 HTML / JS / API 等結構檔
 - 版本保存交給 Git tag 與 GitHub Release
 - Release 附件可放對應版本的 HTML 檔
