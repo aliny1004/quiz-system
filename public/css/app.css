@@ -586,6 +586,7 @@
         padding: 30px;
         padding-bottom: 80px; /* 給固定底部留出空隙 */
         overflow-y: auto; /* 題目太多時，只有這裡會出滾輪 */
+        overflow-anchor: none;
         background-color: #ffffff;
     }
     body.quiz-active .exam-left-panel {
@@ -1989,4 +1990,3 @@
             font-size: 12px;
         }
     }
-

@@ -41,6 +41,8 @@
     let lastWrongRetryQuestions = []; // 完成作答後保留本次可再次測驗的錯題清單
     let currentSessionMode = 'exam'; // 未來複習模式可設為 review，統計記錄會自動停用
     let isExamInProgress = false;
+    let isSummaryVisible = false;
+    let nextQuestionScrollTimer = null;
     let correctlyAnsweredQuestions = new Set(JSON.parse(localStorage.getItem(QUIZ_CORRECT_STORAGE_KEY) || '[]'));
     let currentPqsUser = localStorage.getItem(PQS_CURRENT_USER_STORAGE_KEY) || '';
     const PQS_PAGE = document.body?.dataset?.page || 'home';
@@ -591,7 +593,7 @@
         }
 
         function setChromeVisible(isVisible) {
-            if (document.body.classList.contains('mobile-panel-open')) {
+            if (document.body.classList.contains('mobile-panel-open') || isSummaryVisible) {
                 isVisible = true;
             }
             const shouldHide = !isVisible;
@@ -600,7 +602,7 @@
         }
 
         function handleScroll(target, currentTop) {
-            if (document.body.classList.contains('mobile-panel-open')) {
+            if (document.body.classList.contains('mobile-panel-open') || isSummaryVisible) {
                 setChromeVisible(true);
                 scrollPositions.set(target, Math.max(0, currentTop));
                 return;
@@ -640,7 +642,7 @@
         }
 
         function handleIntent(deltaY) {
-            if (document.body.classList.contains('mobile-panel-open')) {
+            if (document.body.classList.contains('mobile-panel-open') || isSummaryVisible) {
                 setChromeVisible(true);
                 return;
             }
@@ -1450,10 +1452,33 @@
     }
 
     function resetSummaryBox() {
+        isSummaryVisible = false;
+        if (nextQuestionScrollTimer) {
+            clearTimeout(nextQuestionScrollTimer);
+            nextQuestionScrollTimer = null;
+        }
         const summaryBox = document.getElementById('summaryBox');
         const statsText = document.getElementById('statsText');
         if (summaryBox) summaryBox.style.display = 'none';
         if (statsText) statsText.innerHTML = '';
+        document.body.classList.remove('chrome-hidden');
+    }
+
+    function scrollExamPanelToTop() {
+        const leftPanel = document.querySelector('.exam-left-panel');
+        const scrollTop = () => {
+            leftPanel.scrollTop = 0;
+            leftPanel.scrollTo({ top: 0, behavior: 'auto' });
+        };
+        if (leftPanel) {
+            scrollTop();
+            requestAnimationFrame(scrollTop);
+            setTimeout(scrollTop, 0);
+            setTimeout(scrollTop, 80);
+            setTimeout(scrollTop, 240);
+            return;
+        }
+        window.scrollTo({ top: 0, behavior: 'auto' });
     }
 
     function setMobileExamPanelOpen(isOpen) {
@@ -1900,6 +1925,7 @@
         markedQuestions = {};
         currentSessionMode = 'exam';
         isExamInProgress = true;
+        document.title = '考試｜PQS';
         resetSummaryBox();
         resetSessionMistakeTracking();
         closeMobileExamPanel();
@@ -1922,6 +1948,7 @@
         markedQuestions = {};
         currentSessionMode = 'wrongRetry';
         isExamInProgress = true;
+        document.title = '考試｜PQS';
         resetSummaryBox();
         resetSessionMistakeTracking();
         closeMobileExamPanel();
@@ -2011,7 +2038,10 @@
         const nextCard = document.getElementById(`question_card_${index + 1}`);
         if (!nextCard) return;
 
-        setTimeout(function() {
+        if (nextQuestionScrollTimer) clearTimeout(nextQuestionScrollTimer);
+        nextQuestionScrollTimer = setTimeout(function() {
+            nextQuestionScrollTimer = null;
+            if (!isExamInProgress || isSummaryVisible) return;
             nextCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }, 500);
     }
@@ -2244,6 +2274,10 @@
         if (examTimerInterval) clearInterval(examTimerInterval);
         examTimerInterval = null;
         isExamInProgress = false;
+        if (nextQuestionScrollTimer) {
+            clearTimeout(nextQuestionScrollTimer);
+            nextQuestionScrollTimer = null;
+        }
 
         let correctCount = 0;
         const wrongQuestionIds = [];
@@ -2323,10 +2357,13 @@
                     ? '複習模式不寫入學習統計'
                     : '本次未寫入學習統計';
         statsText.innerHTML = `測驗完成！您答對了 ${correctCount} / ${quizBank.length} 題<br>正確率 ${accuracyRate}%<br><span class="summary-note">${statsNotice}</span>`;
+        isSummaryVisible = true;
+        document.title = '測驗結果｜PQS';
+        document.body.classList.remove('chrome-hidden');
         summaryBox.style.display = 'block';
         renderStatsPanel();
         updateSummaryWrongRetryControls();
-        summaryBox.scrollIntoView({ behavior: 'smooth' });
+        scrollExamPanelToTop();
 	const submitBtn = document.getElementById('submitBtn');
         if (submitBtn) {
             const footerBtnGroup = submitBtn.parentElement;
