@@ -5,7 +5,7 @@
   │
   ├── Body (UI 畫面)
   │     ├── .exam-header         - 動態頂部導覽列：系統名稱、明暗模式切換器、使用者頭像選單與作答計時器 (#examTimer)
-  │     │                         往下捲動時像首頁一樣收起，往上捲動或滑鼠靠近頂部時顯示；手機考試中只保留題目面板開關、短版標題與計時器
+  │     │                         往下捲動時收起，往上捲動或滑鼠靠近頂部時顯示；考試頁採固定浮層顯示避免擠壓內容
   │     │
   │     ├── #themeTransitionOverlay - 明暗模式切換過渡遮罩：短暫覆蓋切換前色調，再淡出顯示切換後畫面
   │     │
@@ -167,7 +167,7 @@
         transform: translateY(0);
         transition: max-height 0.22s ease, padding 0.22s ease, opacity 0.18s ease, transform 0.22s ease, background-color 0.36s ease, background 0.36s ease, color 0.36s ease, box-shadow 0.36s ease;
     }
-    body:not(.home-active).chrome-hidden .exam-header {
+    body:not(.home-active):not(.quiz-active).chrome-hidden .exam-header {
         max-height: 0;
         padding-top: 0;
         padding-bottom: 0;
@@ -182,18 +182,14 @@
         box-shadow: none;
         pointer-events: none;
     }
-    body.quiz-active.chrome-hidden .exam-header {
-        min-height: 0;
-    }
     body.quiz-active .exam-header {
+        position: fixed;
+        left: 0;
+        right: 0;
+        width: 100vw;
         box-sizing: border-box;
-        height: var(--quiz-header-current-height, auto);
-        max-height: var(--quiz-header-current-height, 120px);
-        padding-top: var(--quiz-header-current-padding-top, 12px);
-        padding-bottom: var(--quiz-header-current-padding-bottom, 12px);
-        opacity: var(--quiz-header-current-opacity, 1);
-        overflow: hidden;
-        transition: background-color 0.36s ease, background 0.36s ease, color 0.36s ease, box-shadow 0.36s ease;
+        overflow: visible;
+        transition: transform 0.22s ease, background-color 0.36s ease, background 0.36s ease, color 0.36s ease, box-shadow 0.36s ease;
     }
     .header-tools {
         display: flex;
@@ -706,6 +702,9 @@
         overflow-y: auto; /* 題目太多時，只有這裡會出滾輪 */
         background-color: #ffffff;
     }
+    body.quiz-active .exam-left-panel {
+        padding-top: 88px; /* header 在考試頁改為浮層，保留固定閱讀內距避免遮住第一題 */
+    }
 
     /* 右側：狀態面板 */
     .exam-right-panel {
@@ -717,6 +716,9 @@
         flex-direction: column;
         overflow-y: auto; /* 面板資訊太多時獨立滾動 */
         flex-shrink: 0;
+    }
+    body.quiz-active .exam-right-panel {
+        padding-top: 78px;
     }
     .mobile-exam-panel-toggle {
         display: none;
@@ -1727,21 +1729,21 @@
         body.quiz-active .exam-header {
             flex-wrap: nowrap;
             align-items: center;
-            gap: 6px;
-            min-height: 44px;
-            padding: var(--quiz-header-current-padding-top, 6px) 10px var(--quiz-header-current-padding-bottom, 6px);
+            gap: 8px;
+            min-height: 54px;
+            padding: 10px 12px;
         }
         body.quiz-active .header-main {
             max-width: none;
         }
         body.quiz-active .mobile-header-panel-toggle {
-            width: 30px;
-            height: 28px;
-            font-size: 18px;
+            width: 34px;
+            height: 30px;
+            font-size: 20px;
         }
         body.quiz-active .app-title-button {
-            font-size: 13px;
-            line-height: 1;
+            font-size: 15px;
+            line-height: 1.2;
         }
         body.quiz-active .header-tools {
             flex: 0 0 auto;
@@ -1756,11 +1758,11 @@
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            min-width: 126px;
-            min-height: 28px;
-            padding: 4px 8px;
-            font-size: 12px;
-            line-height: 1;
+            min-width: 132px;
+            min-height: 30px;
+            padding: 4px 10px;
+            font-size: 13px;
+            line-height: 1.2;
             white-space: nowrap;
         }
         .management-section {
@@ -1851,6 +1853,9 @@
             padding: 14px;
             padding-bottom: 78px;
         }
+        body.quiz-active .exam-left-panel {
+            padding-top: 58px;
+        }
         body.mobile-panel-open .exam-left-panel {
             overflow: hidden;
             touch-action: none;
@@ -1873,6 +1878,9 @@
             box-shadow: 4px 0 16px rgba(15, 23, 42, 0.18);
             overscroll-behavior: contain;
             touch-action: pan-y;
+        }
+        body.quiz-active .exam-right-panel {
+            padding-top: 10px;
         }
         .exam-right-panel.is-open {
             transform: translateX(0);
@@ -2076,7 +2084,6 @@
         }
         body.quiz-active .exam-header {
             flex-wrap: nowrap;
-            padding: var(--quiz-header-current-padding-top, 6px) 8px var(--quiz-header-current-padding-bottom, 6px);
         }
         body.quiz-active .header-main {
             max-width: none;
@@ -2858,66 +2865,6 @@
         const scrollPositions = new WeakMap();
         let lastMoveAt = Date.now();
         let touchStartY = 0;
-        let quizHeaderMetrics = null;
-
-        function getHeaderHeight() {
-            const header = document.querySelector('.exam-header');
-            return header ? header.offsetHeight : 0;
-        }
-
-        function getQuizHeaderMetrics() {
-            const header = document.querySelector('.exam-header');
-            if (!header) return null;
-            if (!quizHeaderMetrics || quizHeaderMetrics.viewportWidth !== window.innerWidth) {
-                const styles = window.getComputedStyle(header);
-                quizHeaderMetrics = {
-                    viewportWidth: window.innerWidth,
-                    height: Math.max(1, header.offsetHeight || header.getBoundingClientRect().height || 1),
-                    paddingTop: parseFloat(styles.paddingTop) || 0,
-                    paddingBottom: parseFloat(styles.paddingBottom) || 0,
-                    minHeight: Math.max(0, parseFloat(styles.minHeight) || 0)
-                };
-            }
-            return quizHeaderMetrics;
-        }
-
-        function resetQuizHeaderCollapse() {
-            const header = document.querySelector('.exam-header');
-            quizHeaderMetrics = null;
-            if (!header) return;
-            header.style.removeProperty('--quiz-header-current-height');
-            header.style.removeProperty('--quiz-header-current-padding-top');
-            header.style.removeProperty('--quiz-header-current-padding-bottom');
-            header.style.removeProperty('--quiz-header-current-opacity');
-            header.style.removeProperty('min-height');
-        }
-
-        function updateQuizHeaderCollapse(currentTop) {
-            if (!document.body.classList.contains('quiz-active')) {
-                resetQuizHeaderCollapse();
-                return false;
-            }
-            if (document.body.classList.contains('mobile-panel-open')) {
-                resetQuizHeaderCollapse();
-                setChromeVisible(true);
-                return true;
-            }
-
-            const header = document.querySelector('.exam-header');
-            const metrics = getQuizHeaderMetrics();
-            if (!header || !metrics) return true;
-
-            const progress = Math.max(0, Math.min(1, 1 - (currentTop / metrics.height)));
-            header.style.setProperty('--quiz-header-current-height', `${metrics.height * progress}px`);
-            header.style.setProperty('--quiz-header-current-padding-top', `${metrics.paddingTop * progress}px`);
-            header.style.setProperty('--quiz-header-current-padding-bottom', `${metrics.paddingBottom * progress}px`);
-            header.style.setProperty('--quiz-header-current-opacity', progress.toFixed(3));
-            header.style.minHeight = `${metrics.minHeight * progress}px`;
-
-            const shouldHide = progress <= 0.02;
-            document.body.classList.toggle('chrome-hidden', shouldHide);
-            return true;
-        }
 
         function getPrimaryScrollTop() {
             if (document.body.classList.contains('quiz-active')) {
@@ -2944,7 +2891,13 @@
             }
 
             if (document.body.classList.contains('quiz-active')) {
-                updateQuizHeaderCollapse(currentTop);
+                const lastScrollTop = scrollPositions.get(target) || 0;
+                const delta = currentTop - lastScrollTop;
+                if (currentTop <= 4 || delta < -4) {
+                    setChromeVisible(true);
+                } else if (delta > 4) {
+                    setChromeVisible(false);
+                }
                 scrollPositions.set(target, Math.max(0, currentTop));
                 return;
             }
@@ -2977,7 +2930,11 @@
             }
             if (document.body.classList.contains('home-active')) return;
             if (document.body.classList.contains('quiz-active')) {
-                updateQuizHeaderCollapse(getPrimaryScrollTop());
+                if (getPrimaryScrollTop() <= 4 || deltaY < 0) {
+                    setChromeVisible(true);
+                } else if (deltaY > 0) {
+                    setChromeVisible(false);
+                }
                 return;
             }
             if (Math.abs(deltaY) < 4) return;
