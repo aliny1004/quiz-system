@@ -1,4 +1,14 @@
+# Vercel local project link
 .vercel
+
+# Environment files and generated frontend env
 .env*
 public/env.js
+
+# Supabase local temp files
 supabase/.temp
+
+# Installed dependencies and local-only runtime artifacts
+node_modules/
+.vercel-dev-*.log
+.local/
