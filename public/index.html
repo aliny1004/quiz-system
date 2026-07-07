@@ -5,7 +5,7 @@
   │
   ├── Body (UI 畫面)
   │     ├── .exam-header         - 動態頂部導覽列：系統名稱、明暗模式切換器、使用者頭像選單與作答計時器 (#examTimer)
-  │     │                         往下捲動時收起，往上捲動或滑鼠靠近頂部時顯示；手機考試中顯示題目面板開關與短版標題，窄寬度只顯示 PQS，面板開啟時固定顯示
+  │     │                         往下捲動時收起，往上捲動或滑鼠靠近頂部時顯示；手機考試中只保留題目面板開關、短版標題與計時器，收合時保留佔位避免內容彈動
   │     │
   │     ├── #themeTransitionOverlay - 明暗模式切換過渡遮罩：短暫覆蓋切換前色調，再淡出顯示切換後畫面
   │     │
@@ -167,7 +167,7 @@
         transform: translateY(0);
         transition: max-height 0.22s ease, padding 0.22s ease, opacity 0.18s ease, transform 0.22s ease, background-color 0.36s ease, background 0.36s ease, color 0.36s ease, box-shadow 0.36s ease;
     }
-    body:not(.home-active).chrome-hidden .exam-header {
+    body:not(.home-active):not(.quiz-active).chrome-hidden .exam-header {
         max-height: 0;
         padding-top: 0;
         padding-bottom: 0;
@@ -1711,6 +1711,45 @@
             border-color: rgba(148, 163, 184, 0.24);
             box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 2px 8px rgba(0, 0, 0, 0.34);
         }
+        body.quiz-active .exam-header {
+            flex-wrap: nowrap;
+            align-items: center;
+            gap: 6px;
+            min-height: 44px;
+            padding: 6px 10px;
+        }
+        body.quiz-active .header-main {
+            max-width: none;
+        }
+        body.quiz-active .mobile-header-panel-toggle {
+            width: 30px;
+            height: 28px;
+            font-size: 18px;
+        }
+        body.quiz-active .app-title-button {
+            font-size: 13px;
+            line-height: 1;
+        }
+        body.quiz-active .header-tools {
+            flex: 0 0 auto;
+            min-width: 0;
+            gap: 0;
+        }
+        body.quiz-active .theme-switch,
+        body.quiz-active .user-menu-shell {
+            display: none;
+        }
+        body.quiz-active .exam-header .proctor-status {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 126px;
+            min-height: 28px;
+            padding: 4px 8px;
+            font-size: 12px;
+            line-height: 1;
+            white-space: nowrap;
+        }
         .management-section {
             margin: 10px;
             padding: 16px;
@@ -2021,6 +2060,13 @@
         }
         .app-title-button {
             font-size: 14px;
+        }
+        body.quiz-active .exam-header {
+            flex-wrap: nowrap;
+            padding: 6px 8px;
+        }
+        body.quiz-active .header-main {
+            max-width: none;
         }
     }
 
@@ -2800,6 +2846,19 @@
         let lastMoveAt = Date.now();
         let touchStartY = 0;
 
+        function getHeaderHeight() {
+            const header = document.querySelector('.exam-header');
+            return header ? header.offsetHeight : 0;
+        }
+
+        function getPrimaryScrollTop() {
+            if (document.body.classList.contains('quiz-active')) {
+                const quizScroller = document.querySelector('.exam-left-panel');
+                if (quizScroller) return quizScroller.scrollTop || 0;
+            }
+            return window.scrollY || 0;
+        }
+
         function setChromeVisible(isVisible) {
             if (document.body.classList.contains('mobile-panel-open')) {
                 isVisible = true;
@@ -2843,6 +2902,10 @@
                 return;
             }
             if (document.body.classList.contains('home-active')) return;
+            if (document.body.classList.contains('quiz-active') && getPrimaryScrollTop() <= getHeaderHeight() + 4) {
+                setChromeVisible(true);
+                return;
+            }
             if (Math.abs(deltaY) < 4) return;
             if (deltaY > 0) {
                 setChromeVisible(false);
