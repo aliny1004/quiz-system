@@ -1,6 +1,6 @@
 {
   "name": "pqs",
-  "version": "14.0.1",
+  "version": "14.0.2",
   "private": true,
   "description": "Practice Quiz System static frontend for Vercel.",
   "scripts": {

@@ -593,7 +593,7 @@
         }
 
         function setChromeVisible(isVisible) {
-            if (document.body.classList.contains('mobile-panel-open') || isSummaryVisible) {
+            if (document.body.classList.contains('mobile-panel-open')) {
                 isVisible = true;
             }
             const shouldHide = !isVisible;
@@ -602,7 +602,7 @@
         }
 
         function handleScroll(target, currentTop) {
-            if (document.body.classList.contains('mobile-panel-open') || isSummaryVisible) {
+            if (document.body.classList.contains('mobile-panel-open')) {
                 setChromeVisible(true);
                 scrollPositions.set(target, Math.max(0, currentTop));
                 return;
@@ -642,7 +642,7 @@
         }
 
         function handleIntent(deltaY) {
-            if (document.body.classList.contains('mobile-panel-open') || isSummaryVisible) {
+            if (document.body.classList.contains('mobile-panel-open')) {
                 setChromeVisible(true);
                 return;
             }

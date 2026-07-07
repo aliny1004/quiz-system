@@ -2819,7 +2819,7 @@ window.PQS_OFFLINE_MODE = true;
         }
 
         function setChromeVisible(isVisible) {
-            if (document.body.classList.contains('mobile-panel-open') || isSummaryVisible) {
+            if (document.body.classList.contains('mobile-panel-open')) {
                 isVisible = true;
             }
             const shouldHide = !isVisible;
@@ -2828,7 +2828,7 @@ window.PQS_OFFLINE_MODE = true;
         }
 
         function handleScroll(target, currentTop) {
-            if (document.body.classList.contains('mobile-panel-open') || isSummaryVisible) {
+            if (document.body.classList.contains('mobile-panel-open')) {
                 setChromeVisible(true);
                 scrollPositions.set(target, Math.max(0, currentTop));
                 return;
@@ -2868,7 +2868,7 @@ window.PQS_OFFLINE_MODE = true;
         }
 
         function handleIntent(deltaY) {
-            if (document.body.classList.contains('mobile-panel-open') || isSummaryVisible) {
+            if (document.body.classList.contains('mobile-panel-open')) {
                 setChromeVisible(true);
                 return;
             }
