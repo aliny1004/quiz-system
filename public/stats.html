@@ -1,6 +1,6 @@
-<!--
-PQS 線上版入口：使用者訪問頁。
-線上多頁架構：index.html -> home.html -> quiz.html / stats.html。
+﻿<!--
+PQS 線上版學習統計頁。
+由 home.html 或 quiz.html 進入，依目前選取題庫顯示統計與重置功能。
 共用樣式：css/app.css；共用程式：js/app.js；環境設定：env.js。
 離線單檔版本：PQS_offline.html，由 scripts/build-offline.js 產生。
 -->
@@ -9,10 +9,10 @@ PQS 線上版入口：使用者訪問頁。
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>練習測驗系統 PQS</title>
+<title>?????PQS</title>
 <link rel="stylesheet" href="css/app.css">
 </head>
-<body data-page="access">
+<body data-page="stats">
 <div class="exam-header" translate="no">
     <div class="header-main">
         <button type="button" class="mobile-header-panel-toggle" id="mobileHeaderPanelToggle" onclick="toggleMobileExamPanel()" aria-label="展開或收合題目面板" aria-expanded="false">☰</button>
@@ -63,16 +63,13 @@ PQS 線上版入口：使用者訪問頁。
 <canvas id="homeMatrixCanvas" class="home-matrix-canvas" aria-hidden="true"></canvas>
 <div id="themeTransitionOverlay" class="theme-transition-overlay" aria-hidden="true"></div>
 
-<div id="accessSection" class="access-section" translate="no">
-    <div class="access-panel">
-        <p class="access-kicker">PQS Cloud</p>
-        <h1 class="access-title">選擇使用者</h1>
-        <p class="access-subtitle">輸入名稱後進入題庫控制台，系統會載入該使用者的題庫、錯題與學習統計。</p>
-        <form class="access-form" onsubmit="submitAccessUser(event)">
-            <input type="text" id="accessUserInput" class="access-input" autocomplete="username" maxlength="40" placeholder="使用者名稱" aria-label="使用者名稱">
-            <button type="submit" class="access-submit">進入</button>
-        </form>
-        <p id="accessStatus" class="access-status" aria-live="polite"></p>
+<div id="statsSection" class="stats-section" translate="no">
+    <div id="statsPanel" class="stats-panel">
+        <div class="stats-panel-header">
+            <h1>學習統計</h1>
+            <button type="button" class="stats-reset-btn" onclick="resetSelectedQuizStats()">重置統計</button>
+        </div>
+        <div id="statsPanelContent"></div>
     </div>
 </div>
 

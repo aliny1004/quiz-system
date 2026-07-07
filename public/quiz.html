@@ -1,6 +1,6 @@
-<!--
-PQS 線上版入口：使用者訪問頁。
-線上多頁架構：index.html -> home.html -> quiz.html / stats.html。
+﻿<!--
+PQS 線上版考試頁。
+由 home.html 選取題庫後進入，負責測驗渲染、作答、計時、題目面板與結算。
 共用樣式：css/app.css；共用程式：js/app.js；環境設定：env.js。
 離線單檔版本：PQS_offline.html，由 scripts/build-offline.js 產生。
 -->
@@ -9,10 +9,10 @@ PQS 線上版入口：使用者訪問頁。
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>練習測驗系統 PQS</title>
+<title>????PQS</title>
 <link rel="stylesheet" href="css/app.css">
 </head>
-<body data-page="access">
+<body data-page="quiz">
 <div class="exam-header" translate="no">
     <div class="header-main">
         <button type="button" class="mobile-header-panel-toggle" id="mobileHeaderPanelToggle" onclick="toggleMobileExamPanel()" aria-label="展開或收合題目面板" aria-expanded="false">☰</button>
@@ -63,17 +63,58 @@ PQS 線上版入口：使用者訪問頁。
 <canvas id="homeMatrixCanvas" class="home-matrix-canvas" aria-hidden="true"></canvas>
 <div id="themeTransitionOverlay" class="theme-transition-overlay" aria-hidden="true"></div>
 
-<div id="accessSection" class="access-section" translate="no">
-    <div class="access-panel">
-        <p class="access-kicker">PQS Cloud</p>
-        <h1 class="access-title">選擇使用者</h1>
-        <p class="access-subtitle">輸入名稱後進入題庫控制台，系統會載入該使用者的題庫、錯題與學習統計。</p>
-        <form class="access-form" onsubmit="submitAccessUser(event)">
-            <input type="text" id="accessUserInput" class="access-input" autocomplete="username" maxlength="40" placeholder="使用者名稱" aria-label="使用者名稱">
-            <button type="submit" class="access-submit">進入</button>
-        </form>
-        <p id="accessStatus" class="access-status" aria-live="polite"></p>
+<div id="quizSection" style="display: flex; flex-direction: column;">
+    
+    <div class="quiz-active-layout">
+        
+        <div class="exam-left-panel">
+            <div id="summaryBox" class="summary" translate="no">
+                <h1> 測驗結果 </h1>
+                <p class="summary-text" id="statsText"></p>
+                <div class="summary-actions">
+                    <button class="action-btn summary-stats-btn" translate="no" onclick="toggleStatsPanel(true)">查看統計</button>
+                    <div class="summary-retry-row">
+                        <label class="wrong-retry-toggle" title="勾選後，再次測驗只會考本次錯題">
+                            <input type="checkbox" id="wrongRetryPreferenceCheckbox">
+                            <span>僅錯題</span>
+                        </label>
+                        <button class="action-btn summary-retry-btn" translate="no" onclick="startSummaryRetry()">再次測驗</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="quizContainer"></div>
+        </div>
+
+        <div class="mobile-panel-backdrop" id="mobilePanelBackdrop" onclick="closeMobileExamPanel()" aria-hidden="true"></div>
+
+        <div class="exam-right-panel" id="examRightPanel" translate="no">
+            <button type="button" class="mobile-exam-panel-toggle" id="mobileExamPanelToggle" onclick="toggleMobileExamPanel()" aria-label="展開或收合題目面板" aria-expanded="false">題目</button>
+
+            <div class="info-card" style="flex: 1; display: flex; flex-direction: column;">
+                <h4>題目面板 (Item Review)</h4>
+                <div class="nav-grid" id="examNavGrid"></div>
+                <div class="nav-legend">
+                    <h4>作答狀態（底色）：</h4>
+                    <div>■ 白色：未作答 (Unanswered)</div>
+                    <div><span style="color: #3498db;">■</span> 藍色：已作答 (Answered)</div>
+                    <div><span style="color: #f39c12;">■</span> 橘色：已標記 (Marked)</div>
+                    
+                    <h4 style="margin-top: 12px; margin-bottom: 4px;">結算狀態（外框）：</h4>
+                    <div><span style="color: #2ecc71; font-weight: bold;">▢</span> 綠色外框：此題答對 (Correct)</div>
+                    <div><span style="color: #e74c3c; font-weight: bold;">▢</span> 紅色外框：此題答錯 (Wrong)</div>
+                </div>
+            </div>
+        </div>
     </div>
+
+    <div class="exam-footer" translate="no">
+        <div class="footer-hint-text"><span class="footer-hint-segment">請檢查所有題目面板狀態後，</span><span class="footer-hint-segment">點擊右側按鈕送出。</span></div>
+        <div>
+            <button id="submitBtn" class="submit-btn" onclick="checkAnswers()">完成作答 (Submit Exam)</button>
+        </div>
+    </div>
+
 </div>
 
 <script src="env.js"></script>

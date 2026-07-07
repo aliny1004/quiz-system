@@ -1,14 +1,22 @@
-# 練習測驗系統 PQS
+﻿# 練習測驗系統 PQS
 
-這是一個單檔式 HTML 練習測驗系統，適合用來整理、匯入與練習資安證照或大型題庫，例如 EDRP、CEH、CTIA、OSCP 等。
+這是一個多頁式 HTML 練習測驗系統，適合用來整理、匯入與練習資安證照或大型題庫，例如 EDRP、CEH、CTIA、OSCP 等。
 
-目前正式入口檔為 `public/index.html`，部署於 Vercel，並接入 Supabase 題庫與學習統計同步。使用者進入首頁前需輸入名稱，以便題庫、錯題與學習紀錄依使用者分流。
+目前線上版部署於 Vercel，並接入 Supabase 題庫與學習統計同步。使用者進入首頁前需輸入名稱，以便題庫、錯題與學習紀錄依使用者分流。
 
 正式線上版：
 
 ```text
 https://pqs-quiz.vercel.app
 ```
+
+離線單機版：
+
+```text
+public/PQS_offline.html
+```
+
+離線版可直接用瀏覽器開啟本機檔案，不依賴 Vercel、Supabase、`env.js` 或網路連線。
 
 ---
 
@@ -54,6 +62,22 @@ https://pqs-quiz.vercel.app
 5. 點擊「開始測驗」
 6. 完成後查看統計、再次測驗或只重測錯題
 
+### 離線使用
+
+開啟本機檔案：
+
+```text
+public/PQS_offline.html
+```
+
+離線版特色：
+
+1. 不需要網路
+2. 不需要登入 Supabase
+3. 可直接使用內建題庫或自行上傳題庫
+4. 題庫與作答資料只保存在目前瀏覽器的 LocalStorage
+5. 後續更新線上版時，會由 `scripts/build-offline.js` 重新產生並同步離線版
+
 ### 本機開發
 
 本機開發、環境安裝、Vercel / Supabase 設定、版本規則與部署流程，請閱讀：
@@ -71,24 +95,21 @@ docs/DEVELOPMENT.md
 Vercel 專案名稱：pqs
 正式網域：pqs-quiz.vercel.app
 正式入口檔：public/index.html
-目前架構：單檔前端主架構
+目前架構：多頁前端架構
 資料同步：Supabase
 部署平台：Vercel
+離線版本：public/PQS_offline.html
 ```
 
-目前 `public/index.html` 同時作為訪問頁、首頁、測驗主頁與統計頁。
-
-後續若需要拆分多個 HTML / JS / API 檔案，會依版本迭代調整。
+目前線上版已拆分為訪問頁、題庫控制台、考試頁與學習統計頁，並共用外部 CSS / JS。
 
 ---
 
 ## 目前與未來結構規劃
 
-目前 `public/index.html` 同時作為訪問頁、首頁、測驗主頁與統計頁。
-
 Supabase 目前先由前端 REST API 進行使用者、題庫與統計同步。
 
-未來若使用者明確要求拆分架構，考試頁預計使用 `/quiz` 路由，`api/index.js` 作為 Vercel Serverless Function，負責連接 Supabase 與處理後端邏輯。
+目前線上頁面與離線單檔並存：線上版使用多個 HTML 與共用 JS，離線版由同一份 CSS / JS 打包產生。
 
 規劃結構如下：
 
@@ -96,26 +117,31 @@ Supabase 目前先由前端 REST API 進行使用者、題庫與統計同步。
 quiz-system/
 ├── public/
 │   ├── index.html
-│   ├── 其他各種頁.html
-│   └── quiz.html
-├── api/
-│   └── index.js
+│   ├── home.html
+│   ├── quiz.html
+│   ├── stats.html
+│   ├── PQS_offline.html
+│   ├── css/
+│   │   └── app.css
+│   └── js/
+│       └── app.js
 ├── scripts/
-│   └── generate-env.js
+│   ├── generate-env.js
+│   └── build-offline.js
 ├── supabase/
 │   └── migrations/
 ├── package.json
 └── vercel.json
 ```
 
-後續拆分原則：
+拆分維護原則：
 
 ```text
-1. 使用者明確要求後才拆分
-2. 拆分前先確認現有 public/index.html 功能完整
+1. 線上頁面共用 public/css/app.css 與 public/js/app.js
+2. 修改共用 CSS / JS 後必須重新執行 npm run build 產生 PQS_offline.html
 3. 拆分後同步更新 README.md、AGENTS.md 與 docs/DEVELOPMENT.md
-4. 拆分後仍需保留 Vercel production 驗收流程
-5. Supabase service role / secret key 只能放在後端或安全環境，不可暴露在前端
+4. 拆分後仍需保留本機與 Vercel production 驗收流程
+5. Supabase service role / secret key 只能放在後端或安全環境，不可暴露在前端或離線版
 ```
 
 ---
@@ -130,7 +156,14 @@ AGENTS.md
 docs/DEVELOPMENT.md
 .gitignore
 public/index.html
+public/home.html
+public/quiz.html
+public/stats.html
+public/PQS_offline.html
+public/css/app.css
+public/js/app.js
 scripts/generate-env.js
+scripts/build-offline.js
 supabase/migrations/
 package.json
 package-lock.json
@@ -151,7 +184,9 @@ public/env.js
 平常主要修改：
 
 ```text
-public/index.html
+public/*.html
+public/css/app.css
+public/js/app.js
 ```
 
 歷史版本不再以 `quiz_v*.html`、`quiz_v12.html` 等版本備份檔保留在主分支。  
@@ -168,22 +203,37 @@ AGENTS.md
 
 ## 架構圖摘要
 
-此架構圖用來快速理解目前 `public/index.html` 的主要畫面區塊與程式責任。更完整、給 Codex 維護用的架構細節請閱讀 `AGENTS.md`。
+此架構圖用來快速理解目前多頁前端、共用 CSS / JS 與離線版的主要責任。更完整、給 Codex 維護用的架構細節請閱讀 `AGENTS.md`。
 
 ```text
 練習測驗系統
-├── public/index.html
-│   ├── Head
-│   │   └── 內建 CSS
+├── public/
+│   ├── index.html
+│   │   └── 使用者名稱訪問頁
+│   ├── home.html
+│   │   └── 題庫控制台、測驗模式與出題範圍
+│   ├── quiz.html
+│   │   └── 考試頁、題目面板、結算與 footer
+│   ├── stats.html
+│   │   └── 學習統計與重置統計
+│   ├── PQS_offline.html
+│   │   └── 離線單檔版，不依賴 env.js / Supabase / 網路
+│   ├── css/app.css
+│   │   └── 共用 CSS
+│   └── js/app.js
+│       └── 共用前端邏輯
+│
+├── css/app.css
+│   ├── 全域版面與明暗模式
 │   │       ├── 全域版面與明暗模式
 │   │       ├── 首頁控制台樣式
 │   │       ├── 測驗雙欄版面
 │   │       ├── 學習統計頁
 │   │       ├── 動態 header / footer
 │   │       └── 手機 RWD 版面
-│   │
-│   ├── Body
-│   │   ├── .exam-header
+│
+├── 共用 Body 區塊
+│   ├── .exam-header
 │   │   │   ├── 系統名稱 / 返回首頁
 │   │   │   ├── 考試頁採固定浮層滑入滑出，不擠壓題目內容
 │   │   │   ├── 手機考試中三條線題目面板開關
@@ -232,10 +282,12 @@ AGENTS.md
 
 ## 更新紀錄摘要
 
-### v13.3.6
+### v14.0.0
 
-- 考試頁 header 改為固定浮層滑入滑出，往上滑顯示時不再擠壓題目內容
-- 調整考試頁 header 完全展開高度，使桌面與手機都與首頁 header 高度一致
+- 將線上版由單檔入口拆分為 `index.html`、`home.html`、`quiz.html` 與 `stats.html`
+- 將共用樣式與程式拆分為 `public/css/app.css` 與 `public/js/app.js`
+- 新增 `public/PQS_offline.html` 離線單機版，可直接用本機瀏覽器開啟使用
+- 新增 `scripts/build-offline.js`，讓離線版由共用 CSS / JS 重新產生並保持同步
 
 ### v13.3.5
 

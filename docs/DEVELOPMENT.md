@@ -1,4 +1,4 @@
-# 開發人員指南
+﻿# 開發人員指南
 
 本文件提供給維護者、協作者或未來換電腦接手本專案的開發人員閱讀。
 
@@ -79,9 +79,10 @@ public/index.html
 目前架構：
 
 ```text
-單檔式前端主架構
+多頁式前端主架構
 部署平台：Vercel
 資料同步：Supabase
+離線版本：public/PQS_offline.html
 版本保存：Git tag + GitHub Release
 ```
 
@@ -742,7 +743,7 @@ https://pqs-quiz.vercel.app
 固定流程：
 1. 先用 Playwright MCP 測線上正式網址 https://pqs-quiz.vercel.app
 2. 再測 localhost http://localhost:5500
-3. 修改本機 public/index.html
+3. 修改本機 public/*.html、public/css/app.css 或 public/js/app.js
 4. 修改後重新測 localhost
 5. 本機驗證成功後等待我確認
 6. 我確認後才可以 commit / push / deploy
@@ -754,12 +755,13 @@ https://pqs-quiz.vercel.app
 - 不要要求我在對話中貼 token。
 - 不要把 token 寫進程式碼、文件或 commit。
 - Supabase 前端只能使用 SUPABASE_PROJECT_URL 與 SUPABASE_ANON_API_KEY。
-- 不得把 SUPABASE_SERVICE_ROLE_KEY 或 SUPABASE_SECRET_KEY 寫進 public/index.html 或任何前端可讀檔案。
+- 不得把 SUPABASE_SERVICE_ROLE_KEY 或 SUPABASE_SECRET_KEY 寫進 public/*.html、public/js/app.js、public/PQS_offline.html 或任何前端可讀檔案。
 
 請先做環境檢查，不要急著改檔案：
 - 檢查 package.json 是否存在
 - 檢查 `vercel dev --listen 5500 --local` 是否可用
-- 檢查 public/index.html 是否存在
+- 檢查 public/index.html、home.html、quiz.html、stats.html、PQS_offline.html 是否存在
+- 檢查 public/css/app.css 與 public/js/app.js 是否存在
 - 檢查 Git remote
 - 檢查 Vercel 設定
 - 檢查 Playwright MCP 是否可用
@@ -778,8 +780,8 @@ https://pqs-quiz.vercel.app
 2. 視需要用 Playwright MCP 先測線上正式版，確認 production 現況
 3. 用 `vercel dev --listen 5500 --local` 啟動 localhost
 4. 用 Playwright MCP 測 `http://localhost:5500`
-5. 修改 public/index.html
-6. 同步更新 public/index.html 檔案最上方結構註解
+5. 修改 public/*.html、public/css/app.css 或 public/js/app.js
+6. 同步更新相關 HTML 檔案最上方結構註解
 7. 視情況更新 README.md、docs/DEVELOPMENT.md 或 AGENTS.md
 8. 用 Playwright MCP 重新測 `http://localhost:5500`
 9. 確認桌面版與手機版都正常
@@ -814,7 +816,14 @@ AGENTS.md
 docs/DEVELOPMENT.md
 .gitignore
 public/index.html
+public/home.html
+public/quiz.html
+public/stats.html
+public/PQS_offline.html
+public/css/app.css
+public/js/app.js
 scripts/generate-env.js
+scripts/build-offline.js
 supabase/migrations/
 package.json
 package-lock.json
@@ -829,7 +838,14 @@ AGENTS.md
 docs/DEVELOPMENT.md
 .gitignore
 public/index.html
+public/home.html
+public/quiz.html
+public/stats.html
+public/PQS_offline.html
+public/css/app.css
+public/js/app.js
 scripts/generate-env.js
+scripts/build-offline.js
 supabase/migrations/
 package.json
 package-lock.json
@@ -856,13 +872,16 @@ public/env.js
 .vercel/             Vercel 本機 project link，可重新 vercel link
 node_modules/        npm install 產生，可由 package-lock.json 重建
 public/env.js        npm run build 依 SUPABASE_PROJECT_URL / SUPABASE_ANON_API_KEY 產生
+public/PQS_offline.html 需提交；由 scripts/build-offline.js 產生，用於無網路單機使用
 package-lock.json    要提交，讓新電腦 npm install 時套件版本一致
 ```
 
 平常主要修改：
 
 ```text
-public/index.html
+public/*.html
+public/css/app.css
+public/js/app.js
 ```
 
 不要在主分支新增：
@@ -923,7 +942,7 @@ v主版本.小版本.修補版本
 範例：
 
 ```text
-v13.3.6
+v14.0.0
 ```
 
 ### 17.1 修補版本

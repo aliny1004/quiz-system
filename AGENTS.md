@@ -1,10 +1,10 @@
-# AGENTS.md
+﻿# AGENTS.md
 
 ## 1. 角色
 
 你是這個 VS Code 專案的 Codex coding agent。
 
-此專案是「練習測驗系統 PQS」，目前主要為單檔式 HTML 練習測驗系統。
+此專案是「練習測驗系統 PQS」，目前主要為多頁式 HTML 練習測驗系統。
 
 正式線上版：
 
@@ -16,6 +16,12 @@ https://pqs-quiz.vercel.app
 
 ```text
 public/index.html
+```
+
+離線單機版：
+
+```text
+public/PQS_offline.html
 ```
 
 本機預設測試網址：
@@ -88,6 +94,12 @@ docs/DEVELOPMENT.md 是否存在
 package.json 是否存在
 package.json 是否有 build / deploy script
 public/index.html 是否存在
+public/home.html 是否存在
+public/quiz.html 是否存在
+public/stats.html 是否存在
+public/PQS_offline.html 是否存在
+public/css/app.css 是否存在
+public/js/app.js 是否存在
 vercel.json 是否存在
 .git 是否存在
 Git remote 是否存在
@@ -244,7 +256,14 @@ AGENTS.md
 docs/DEVELOPMENT.md
 .gitignore
 public/index.html
+public/home.html
+public/quiz.html
+public/stats.html
+public/PQS_offline.html
+public/css/app.css
+public/js/app.js
 scripts/generate-env.js
+scripts/build-offline.js
 supabase/migrations/
 package.json
 package-lock.json
@@ -280,7 +299,14 @@ package-lock.json    需要提交，用來鎖定套件版本
 
 ```text
 public/index.html
+public/home.html
+public/quiz.html
+public/stats.html
+public/css/app.css
+public/js/app.js
 ```
+
+`public/PQS_offline.html` 是離線單檔版，由 `scripts/build-offline.js` 根據共用 CSS / JS 與線上頁面產生。修改共用 CSS / JS 後必須執行 `npm run build`，讓離線版同步更新。
 
 除非使用者明確要求，否則不要新增：
 
@@ -376,10 +402,10 @@ Matrix 背景是否影響閱讀或效能
 
 ## 13. 文件同步規則
 
-只要新增或修改 `public/index.html` 的功能、畫面區塊、流程或主要函式，必須同步檢查：
+只要新增或修改 `public/*.html`、`public/css/app.css`、`public/js/app.js` 的功能、畫面區塊、流程或主要函式，必須同步檢查：
 
 ```text
-public/index.html 檔案最上方的結構註解
+相關 HTML 檔案最上方的結構註解
 README.md
 docs/DEVELOPMENT.md
 AGENTS.md
@@ -407,7 +433,7 @@ v主版本.小版本.修補版本
 範例：
 
 ```text
-v13.3.6
+v14.0.0
 ```
 
 ### 14.1 修補版本
@@ -609,20 +635,28 @@ pqs-quiz.vercel.app
 
 ## 20. 完整架構圖
 
-此架構圖來自專案原始完整維護說明，供 Codex 在修改 `public/index.html` 時對照畫面區塊與主要函式責任。
+此架構圖來自專案原始完整維護說明，供 Codex 在修改 `public/*.html`、`public/css/app.css`、`public/js/app.js` 時對照畫面區塊與主要函式責任。
 
-只要新增或修改 `public/index.html` 的功能、畫面區塊、流程或主要函式，必須同步檢查此架構圖是否需要更新。
+只要新增或修改 `public/*.html`、`public/css/app.css`、`public/js/app.js` 的功能、畫面區塊、流程或主要函式，必須同步檢查此架構圖是否需要更新。
 
 ```text
 練習測驗系統
-├── Head
-│   └── 內建 CSS
-│       ├── 全域版面與明暗模式
-│       ├── 首頁控制台樣式
-│       ├── 測驗雙欄版面
-│       ├── 學習統計頁
-│       ├── 動態 header / footer
-│       └── 手機 RWD 版面
+├── public/
+│   ├── index.html：使用者訪問頁
+│   ├── home.html：題庫控制台
+│   ├── quiz.html：考試頁
+│   ├── stats.html：學習統計頁
+│   ├── PQS_offline.html：離線單檔版，由 scripts/build-offline.js 產生
+│   ├── css/app.css：共用樣式
+│   └── js/app.js：共用前端邏輯
+│
+├── CSS
+│   ├── 全域版面與明暗模式
+│   ├── 首頁控制台樣式
+│   ├── 測驗雙欄版面
+│   ├── 學習統計頁
+│   ├── 動態 header / footer
+│   └── 手機 RWD 版面
 │
 ├── Body
 │   ├── .exam-header
@@ -671,7 +705,7 @@ pqs-quiz.vercel.app
 │       ├── 左側作答提示，手機版保留桌面式提醒文字且最多兩行，寬度不足時從逗號後換行
 │       └── 右側完成作答按鈕 #submitBtn
 │
-└── Script
+└── Script：public/js/app.js
     ├── 全域狀態與資料模型
     │   ├── sourceQuizBank
     │   ├── quizBank
