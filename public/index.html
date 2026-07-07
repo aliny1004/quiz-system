@@ -1488,12 +1488,12 @@
         height: 16px;
         cursor: pointer;
     }
-    /* 桌面版三欄分組：隨機設定 / 複習篩選 / 作答輔助 */
+    /* 桌面版三欄分組：主要隨機設定 / 作答輔助 / 複習篩選 */
     .mode-shuffle-questions { order: 1; }
-    .mode-wrong-only { order: 2; }
-    .mode-answer-hint { order: 3; }
+    .mode-answer-hint { order: 2; }
+    .mode-hide-correct { order: 3; }
     .mode-shuffle-options { order: 4; }
-    .mode-hide-correct { order: 5; }
+    .mode-wrong-only { order: 5; }
     .mode-hide-timer { order: 6; }
 
     /* 通用提示：任一設定項目加上 data-tooltip 即可共用；桌面 hover/focus，手機長按加 tooltip-active。 */
@@ -1812,9 +1812,9 @@
         }
         body.home-active .mode-shuffle-questions { order: 1; }
         body.home-active .mode-shuffle-options { order: 2; }
-        body.home-active .mode-wrong-only { order: 3; }
-        body.home-active .mode-hide-correct { order: 4; }
-        body.home-active .mode-answer-hint { order: 5; }
+        body.home-active .mode-answer-hint { order: 3; }
+        body.home-active .mode-wrong-only { order: 4; }
+        body.home-active .mode-hide-correct { order: 5; }
         body.home-active .mode-hide-timer { order: 6; }
         .checkbox-grid,
         .question-scope-panel {
