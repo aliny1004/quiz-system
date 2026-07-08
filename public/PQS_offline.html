@@ -3077,17 +3077,32 @@ window.PQS_OFFLINE_MODE = true;
 
     // 集中讀取所有測驗設定，後續新增模式時優先擴充這個物件。
     function getQuizSettings() {
+        const saved = JSON.parse(localStorage.getItem(QUIZ_SETTINGS_STORAGE_KEY) || '{}');
+        const checkboxValue = (id, key) => {
+            const checkbox = document.getElementById(id);
+            return checkbox ? checkbox.checked : saved[key] === true;
+        };
+        const selectValue = (id, key, fallback) => {
+            const select = document.getElementById(id);
+            return select ? select.value : (typeof saved[key] === 'string' ? saved[key] : fallback);
+        };
+        const numberValue = (id, key) => {
+            const input = document.getElementById(id);
+            const value = input ? input.value : saved[key];
+            return parseInt(value, 10) || 0;
+        };
+
         return {
-            shuffleQuestions: document.getElementById('shuffleCheckbox')?.checked || false,
-            hideCorrect: document.getElementById('hideCorrectCheckbox')?.checked || false,
-            wrongMode: document.getElementById('wrongModeCheckbox')?.checked || false,
-            shuffleOptions: document.getElementById('shuffleOptionsCheckbox')?.checked || false,
-            answerHint: document.getElementById('answerHintCheckbox')?.checked || false,
-            hideTimer: document.getElementById('showTimerCheckbox')?.checked || false,
-            questionScopeMode: document.getElementById('questionScopeMode')?.value || 'all',
-            randomQuestionCount: parseInt(document.getElementById('randomQuestionCount')?.value, 10) || 0,
-            rangeStartQuestion: parseInt(document.getElementById('rangeStartQuestion')?.value, 10) || 0,
-            rangeEndQuestion: parseInt(document.getElementById('rangeEndQuestion')?.value, 10) || 0
+            shuffleQuestions: checkboxValue('shuffleCheckbox', 'shuffleQuestions'),
+            hideCorrect: checkboxValue('hideCorrectCheckbox', 'hideCorrect'),
+            wrongMode: checkboxValue('wrongModeCheckbox', 'wrongMode'),
+            shuffleOptions: checkboxValue('shuffleOptionsCheckbox', 'shuffleOptions'),
+            answerHint: checkboxValue('answerHintCheckbox', 'answerHint'),
+            hideTimer: checkboxValue('showTimerCheckbox', 'hideTimer'),
+            questionScopeMode: selectValue('questionScopeMode', 'questionScopeMode', 'all'),
+            randomQuestionCount: numberValue('randomQuestionCount', 'randomQuestionCount'),
+            rangeStartQuestion: numberValue('rangeStartQuestion', 'rangeStartQuestion'),
+            rangeEndQuestion: numberValue('rangeEndQuestion', 'rangeEndQuestion')
         };
     }
 
@@ -4180,8 +4195,10 @@ window.PQS_OFFLINE_MODE = true;
         closeMobileExamPanel();
 
         setHomeBackgroundVisible(false);
-        document.getElementById('managementSection').style.display = 'none';
-        document.getElementById('quizSection').style.display = 'flex';
+        const managementSection = document.getElementById('managementSection');
+        if (managementSection) managementSection.style.display = 'none';
+        const quizSection = document.getElementById('quizSection');
+        if (quizSection) quizSection.style.display = 'flex';
         document.body.classList.add('quiz-active');
         const statsSection = document.getElementById('statsSection');
         if (statsSection) statsSection.style.display = 'none';
