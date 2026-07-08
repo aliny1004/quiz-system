@@ -271,6 +271,24 @@
         });
     }
 
+    async function ensureQuizBankSyncedToSupabase(storageKey) {
+        if (!isSupabaseEnabled() || !storageKey) return null;
+
+        let questions = [];
+        try {
+            questions = JSON.parse(localStorage.getItem(storageKey) || '[]');
+        } catch (e) {
+            questions = [];
+        }
+        if (!Array.isArray(questions) || questions.length === 0) return null;
+
+        const displayName = storageKey === BUILTIN_EDRP_STORAGE_KEY
+            ? 'EDRP.csv'
+            : storageKey.replace(/^quiz_sys_/, '');
+        const metaData = JSON.parse(localStorage.getItem(QUIZ_METADATA_STORAGE_KEY) || '{}');
+        return syncQuizBankToSupabase(storageKey, displayName, questions, metaData[storageKey] || Date.now());
+    }
+
     function deleteQuizBankFromSupabase(storageKey) {
         if (!storageKey || storageKey === BUILTIN_EDRP_STORAGE_KEY) return null;
         return supabaseRequest(`pqs_quiz_banks?username=eq.${getSupabaseUserParam()}&storage_key=eq.${encodeURIComponent(storageKey)}`, {
@@ -312,8 +330,9 @@
         });
     }
 
-    function syncWrongHistoryToSupabase(quizStorageKey, wrongIds, recordedAt) {
+    async function syncWrongHistoryToSupabase(quizStorageKey, wrongIds, recordedAt) {
         if (!quizStorageKey) return null;
+        await ensureQuizBankSyncedToSupabase(quizStorageKey);
         return supabaseRequest('pqs_wrong_history', {
             method: 'POST',
             headers: { Prefer: 'return=minimal' },
@@ -326,8 +345,9 @@
         });
     }
 
-    function syncLearningStatsToSupabase(quizStorageKey, historyRecord, quizStats, completedAt) {
+    async function syncLearningStatsToSupabase(quizStorageKey, historyRecord, quizStats, completedAt) {
         if (!quizStorageKey || !historyRecord) return null;
+        await ensureQuizBankSyncedToSupabase(quizStorageKey);
 
         const answeredStats = Object.entries(quizStats || {})
             .map(([questionId, stats]) => ({
