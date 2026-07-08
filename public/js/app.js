@@ -2172,6 +2172,10 @@
                 input.className = 'blank-input';
                 input.placeholder = '請在此處輸入答案...';
                 input.name = `q_${index}`;
+                input.autocomplete = 'off';
+                input.autocapitalize = 'none';
+                input.spellcheck = false;
+                input.setAttribute('autocorrect', 'off');
                 input.oninput = function() { 
                     if(input.value.trim() !== "") {
                         updateNavStatus(index, 'answered');
